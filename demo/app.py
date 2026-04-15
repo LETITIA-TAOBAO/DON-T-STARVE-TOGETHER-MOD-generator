@@ -2,6 +2,12 @@ import streamlit as st
 import sys
 import os
 import base64
+import traceback
+
+try:
+    from llm.qwen_client import design_with_llm, explore_with_llm
+except Exception as e:
+    st.error(traceback.format_exc())
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
