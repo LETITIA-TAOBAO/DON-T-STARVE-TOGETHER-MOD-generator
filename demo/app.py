@@ -174,9 +174,7 @@ elif st.session_state.mode == "explore":
     
     render_chat(st.session_state.messages)
     
-    user_input = st.chat_input("说说你的想法... / Share your thoughts...")
-    
-    if user_input:
+        if user_input:
         st.session_state.messages.append({
             "role": "user",
             "content": user_input
@@ -193,4 +191,11 @@ elif st.session_state.mode == "explore":
                 reply_obj = explore_with_llm(st.session_state.messages)
                 reply_text = reply_obj["text"] if isinstance(reply_obj, dict) else reply_obj
             except Exception:
-                reply_text = "❌ 对话失败 / CHAT FAILED: " + 
+                # 使用 f-string 避免换行错误
+                reply_text = f"❌ 对话失败 / CHAT FAILED: {traceback.format_exc()}"
+        
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": reply_text
+        })
+        st.rerun()
