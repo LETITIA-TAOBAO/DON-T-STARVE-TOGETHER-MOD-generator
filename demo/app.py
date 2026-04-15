@@ -8,33 +8,19 @@ import io
 import zipfile
 
 # ========================
-# LLM 导入 + 降级模式
+# ⚠️ LLM 安全导入 (关键！不能降级)
 # ========================
 try:
     from qwen_client import design_with_llm, explore_with_llm
+    print("[SUCCESS] LLM module loaded successfully!")
 except Exception as e:
-    print(f"[WARN] LLM load failed")
-    
-    def mock_explore(messages):
-        return {"text": f"👁️ Shadow responds... Your idea '{messages[-1]['content'][:20]}...' is interesting!", "data": None}
-    
-    def mock_design(idea):
-        return {
-            "text": f"✅ Mod Generated! Name: Mod_{datetime.now().strftime('%H%M')}",
-            "data": {
-                "name": f"Mod_{datetime.now().strftime('%Y%m%d_%H%M')}",
-                "desc": idea[:100],
-                "lua_code": "-- DST Mod\nprint('Hello')",
-                "modinfo": 'version = 1\nname = "AI Mod"'
-            }
-        }
-    
-    design_with_llm = mock_design
-    explore_with_llm = mock_explore
+    st.error(f"❌ **LLM 模块加载失败**：{str(e)}")
+    st.error("请确保 `qwen_client.py` 文件存在于当前目录")
+    st.stop()
 
 
 # ========================
-# 🎨 CSS + JavaScript 双重强制透明
+# 🎨 CSS + JavaScript (保持背景透明度)
 # ========================
 def inject_theme_css_js(bg_url):
     css = f"""
@@ -50,7 +36,7 @@ def inject_theme_css_js(bg_url):
         --border-gold: #A67C3B;
     }}
     
-    /* ===== 第一层：全局强制 ===== */
+    /* ===== 全局强制透明 ===== */
     html, body {{
         background-color: transparent !important;
         color: var(--text-primary) !important;
@@ -59,24 +45,22 @@ def inject_theme_css_js(bg_url):
         overflow-x: hidden !important;
     }}
     
-    /* ===== 第二层：stApp ===== */
     .stApp, [class*="css"], .st-emotion-cache, [data-testid="stApp"] {{
         background-color: transparent !important;
         background: transparent !important;
     }}
     
-    /* ===== 第三层：背景图层 ===== */
+    /* ===== 背景图层（提高不透明度）===== */
     body::before {{
         content: "" !important;
         position: fixed !important;
         top: 0; left: 0; width: 100%; height: 100%;
         z-index: -1000 !important;
-        background: linear-gradient(rgba(10,6,3,0.7), rgba(5,3,1,0.9)), url('{bg_url}') center/cover no-repeat !important;
-        filter: contrast(1.08) brightness(0.88) !important;
+        background: linear-gradient(rgba(10,6,3,0.4), rgba(5,3,1,0.6)), url('{bg_url}') center/cover no-repeat !important;
+        filter: contrast(1.08) brightness(0.95) !important;
     }}
     
-    /* ===== 第四层：Chat Input深度覆盖（最关键）===== */
-    /* 直接针对底层React组件 */
+    /* ===== Chat Input 深度覆盖 ===== */
     div[data-testid="stChatInput"],
     div[data-testid="stChatInput"] > div,
     div[data-testid="stChatInput"] form,
@@ -95,7 +79,6 @@ def inject_theme_css_js(bg_url):
         outline: none !important;
     }}
     
-    /* 针对文本域 */
     div[data-testid="stChatInput"] textarea {{
         background-color: rgba(25,20,15,0.98) !important;
         border: 2px solid var(--border-gold) !important;
@@ -106,14 +89,13 @@ def inject_theme_css_js(bg_url):
         box-shadow: inset 0 0 15px rgba(0,0,0,0.6) !important;
     }}
     
-    /* 针对发送按钮 */
     div[data-testid="stChatInput"] button {{
         background-color: rgba(25,20,15,0.98) !important;
         border: 2px solid var(--border-gold) !important;
         color: var(--highlight-gold) !important;
     }}
     
-    /* ===== 第五层：块级元素透明 ===== */
+    /* ===== 块级元素透明 ===== */
     [data-testid="stAppViewContainer"],
     [data-testid="stBlockContainer"],
     [data-testid="stVerticalBlock"],
@@ -126,7 +108,7 @@ def inject_theme_css_js(bg_url):
         padding: 0 !important;
     }}
     
-    /* ===== 第六层：隐藏默认元素 ===== */
+    /* ===== 隐藏默认元素 ===== */
     header, footer, #MainMenu, [data-testid="stHeader"], [data-testid="stDecoration"], 
     [data-testid="stToolbar"], [data-testid="stSidebarClose"] {{
         display: none !important;
@@ -152,11 +134,9 @@ def inject_theme_css_js(bg_url):
     ::-webkit-scrollbar-thumb {{ background: rgba(166,124,59,0.5) !important; }}
     </style>
     
-    <!-- 🔥 第七层：JavaScript强制清理 -->
+    <!-- JavaScript 强制清理 -->
     <script>
-    // 页面加载后立即执行
     setTimeout(function() {{
-        // 查找所有可能带背景的容器
         const containers = document.querySelectorAll(
             'div[data-testid*="stApp"],' +
             'div[data-testid*="Container"],' +
@@ -171,7 +151,6 @@ def inject_theme_css_js(bg_url):
             el.style.background = 'transparent' + '!important';
         }});
         
-        // 特别处理聊天输入框
         const chatInput = document.querySelector('[data-testid="stChatInput"]');
         if (chatInput) {{
             chatInput.style.backgroundColor = 'transparent' + '!important';
@@ -227,34 +206,10 @@ bg_url = f'data:image/png;base64,{bg_base64}' if bg_base64 else ''
 
 
 # ========================
-# 🎨 注入 CSS + JS (最前面！)
+# 🎨 注入 CSS + JS
 # ========================
 print("[INIT] Injecting theme CSS + JavaScript...")
 st.markdown(inject_theme_css_js(bg_url), unsafe_allow_html=True)
-
-# 🔥 额外JS注入作为备份
-backup_js = """
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    setInterval(function() {
-        const allElements = document.getElementsByTagName('*');
-        for (let el of allElements) {
-            if (el.tagName === 'DIV' || el.tagName === 'SECTION') {
-                const style = window.getComputedStyle(el);
-                if ((style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent') || 
-                    (style.backgroundImage && !style.backgroundImage.includes('linear-gradient'))) {
-                    // 排除已有背景图的元素
-                    if (!el.classList.contains('background-layer')) {
-                        el.style.backgroundColor = 'transparent' + '!important';
-                    }
-                }
-            }
-        }
-    }, 500); // 每500ms检查一次
-});
-</script>
-"""
-st.markdown(backup_js, unsafe_allow_html=True)
 
 
 # ========================
@@ -287,7 +242,40 @@ with col2:
         st.session_state.messages = []
         st.rerun()
 
+
+# ========================
+# 按钮下方说明卡片
+# ========================
+st.markdown("""
+<div style='display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-top:20px;'>
+    <div style='flex:1;min-width:280px;background:rgba(30,20,10,0.75);border:2px solid #aa7733;padding:25px;border-radius:8px;position:relative;'>
+        <div style='position:absolute;top:-15px;right:-15px;font-size:30px;color:#aa7733;transform:rotate(45deg);'>✷</div>
+        <h3 style='font-family:Creepster;color:#ffaa60;font-size:1.5rem;text-align:center;margin:0 0 10px;'>🔥 意志铸剑者</h3>
+        <p style='font-family:IM Fell English SC;color:#d4c4a0;font-size:0.95rem;line-height:1.7;text-align:center;'>
+        当你已明晰 Mod 的核心法则与物品灵魂，<br>
+        无需徘徊于暗影之间，<br>
+        将你的疯狂构想直接锻造成可触及的现实。<br><br>
+        <span style='color:#888;font-size:0.8em;font-style:italic;'>For when your vision is clear. Forge it now.</span>
+        </p>
+    </div>
+    
+    <div style='flex:1;min-width:280px;background:rgba(20,30,20,0.75);border:2px solid #668844;padding:25px;border-radius:8px;position:relative;'>
+        <div style='position:absolute;top:-15px;right:-15px;font-size:30px;color:#668844;transform:rotate(45deg);'>✷</div>
+        <h3 style='font-family:Creepster;color:#aadd88;font-size:1.5rem;text-align:center;margin:0 0 10px;'>👁️ 迷雾探路者</h3>
+        <p style='font-family:IM Fell English SC;color:#d4c4a0;font-size:0.95rem;line-height:1.7;text-align:center;'>
+        当灵感如迷雾般在你脑海中低语，<br>
+        混沌尚未凝聚成形，<br>
+        与暗影对话，在反复试探中让疯狂的蓝图逐渐清晰。<br><br>
+        <span style='color:#888;font-size:0.8em;font-style:italic;'>For when inspiration is foggy. Talk to the Shadow.</span>
+        </p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+# ========================
 # 模式确认
+# ========================
 if st.session_state.mode != "home":
     mode_map = {
         "rapid": ("⚡", "#FFD700", "**快速生成模式已激活**"),
@@ -327,7 +315,7 @@ elif st.session_state.mode == "rapid":
 
 
 # ========================
-# ⏳ 生成阶段
+# ⏳ 生成阶段 (完整 LLM 调用)
 # ========================
 if st.session_state.is_generating:
     st.markdown("<div style='text-align:center;padding:40px;'><h2 style='font-family:Creepster;color:#FFD700;font-size:2.5rem;'>世界正在扭曲......</h2><p style='font-family:Griffy;color:#aa8855;margin-top:20px;'>The shadows are weaving your madness...</p></div>", unsafe_allow_html=True)
@@ -335,24 +323,40 @@ if st.session_state.is_generating:
     time.sleep(2.5)
     
     try:
-        result = explore_with_llm(st.session_state.messages) if st.session_state.mode == "explore" else design_with_llm(st.session_state.messages[0]['content'])
+        # ⭐⭐⭐⭐⭐ 完整 LLM 调用 (无降级) ⭐⭐⭐⭐⭐
+        if st.session_state.mode == "explore":
+            result = explore_with_llm(st.session_state.messages)
+        else:
+            result = design_with_llm(st.session_state.messages[0]['content'])
         
-        st.session_state.messages.append({"role": "assistant", "content": result.get('text', '已完成')})
+        # 添加到聊天记录
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": result.get('text', '已完成')
+        })
         
+        # 保存 Mod 数据
         mod_data = result.get('data', {})
         if mod_data:
             st.session_state.generated_mods.append({
                 "id": len(st.session_state.generated_mods) + 1,
-                "name": mod_data.get('name', '新 Mod'),
+                "name": mod_data.get('name', f"Mod #{len(st.session_state.generated_mods)+1}"),
                 "desc": mod_data.get('desc', ''),
                 "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
                 "lua_code": mod_data.get('lua_code', ''),
                 "modinfo": mod_data.get('modinfo', '')
             })
+    
     except Exception as e:
-        st.session_state.messages.append({"role": "assistant", "content": f"❌ 错误：{str(e)}"})
+        # LLM 调用出错时记录错误信息
+        print(f"[ERROR] LLM call failed: {str(e)}")
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": f"❌ **生成失败**：\n\n{str(e)}\n\n请检查你的 API Key 和网络连接。"
+        })
     
     st.session_state.is_generating = False
+    st.session_state.mode = "generated"
     st.rerun()
 
 
