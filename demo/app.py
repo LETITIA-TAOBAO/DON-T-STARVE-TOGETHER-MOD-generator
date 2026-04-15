@@ -1,194 +1,206 @@
 import streamlit as st
-import re
-import json
-import base64
+import sys
 import os
+import base64
 
 # =========================
-# 🎨 页面配置（必须最前）
+# 🚨 路径修复
 # =========================
-st.set_page_config(page_title="DST Mod Designer", layout="wide")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(BASE_DIR)
 
 # =========================
-# 🖼️ 背景图（只做UI，不影响逻辑）
+# 🔥 导入模块
 # =========================
-def get_base64_image(image_path):
+from llm.qwen_client import design_with_llm, explore_with_llm
+from generator.image_generator import generate_boss_image
+from generator.packer import build_full_mod
+
+from ui.theme import inject_theme
+from ui.components import (
+    render_banner,
+    render_chat
+)
+
+# =========================
+# 🖼️ 读取封面图（关键）
+# =========================
+def get_base64_image(path):
     try:
-        with open(image_path, "rb") as f:
+        with open(path, "rb") as f:
             return base64.b64encode(f.read()).decode()
-    except:
-        return ""
-
-# ⚠️ 图片必须放在项目目录（和app.py同级）
-IMAGE_PATH = "封面图.png"
-
-bg_base64 = ""
-if os.path.exists(IMAGE_PATH):
-    bg_base64 = get_base64_image(IMAGE_PATH)
-
-# =========================
-# 🎨 UI样式（核心）
-# =========================
-st.markdown(f"""
-<style>
-
-/* 整体背景 */
-.stApp {{
-    background-color: black;
-}}
-
-/* 背景图 */
-.stApp::before {{
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url("data:image/png;base64,{bg_base64}");
-    background-size: cover;
-    background-position: center;
-    opacity: 0.25;
-    z-index: -1;
-}}
-
-/* 黑色遮罩 */
-.stApp::after {{
-    content: "";
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.7);
-    z-index: -1;
-}}
-
-/* 侧边栏 */
-section[data-testid="stSidebar"] {{
-    background-color: #0d0d0d !important;
-}}
-
-/* 输入框 */
-.stTextInput input {{
-    background-color: #1a1a1a;
-    color: white;
-    border: 1px solid #444;
-}}
-
-/* 按钮 */
-.stButton button {{
-    background-color: #2b2b2b;
-    color: white;
-    border-radius: 6px;
-    border: 1px solid #555;
-}}
-
-.stButton button:hover {{
-    background-color: #444;
-}}
-
-/* 内容卡片 */
-.block-container {{
-    background: rgba(0,0,0,0.6);
-    padding: 2rem;
-    border-radius: 12px;
-}}
-
-</style>
-""", unsafe_allow_html=True)
-
-# =========================
-# 🔑 LLM（保留你原来的）
-# =========================
-# ⚠️ 如果你不用OpenAI，这里可以删掉
-# from openai import OpenAI
-# client = OpenAI(api_key="YOUR_API_KEY")
-
-# =========================
-# 🧠 安全调用（保留）
-# =========================
-def safe_llm_call(messages):
-    try:
-        # 👉 这里保留你原来的逻辑（或接你自己的qwen）
-        return "这里是测试回复（请接入你的LLM）"
-
-    except Exception as e:
-        return f"❌ API错误: {str(e)}"
-
-
-# =========================
-# 🧠 JSON解析（保留）
-# =========================
-def extract_json(text):
-    try:
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-        if not match:
-            return None
-        return json.loads(match.group(0))
     except:
         return None
 
+bg_base64 = get_base64_image(os.path.join(BASE_DIR, "封面图.png"))
 
-def clean_response_for_user(text):
-    return re.sub(r"\{.*\}", "", text, flags=re.DOTALL).strip()
+# =========================
+# 页面配置
+# =========================
+st.set_page_config(
+    page_title="AI Mod Generator",
+    layout="wide"
+)
+
+# 注入主题（带背景）
+st.markdown(inject_theme(bg_base64), unsafe_allow_html=True)
+
+# =========================
+# Session 初始化
+# =========================
+if "mode" not in st.session_state:
+    st.session_state.mode = None
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "final_input" not in st.session_state:
+    st.session_state.final_input = None
 
 
 # =========================
-# 💬 Prompt（保留）
+# 🎮 顶部标题（游戏感）
 # =========================
-SYSTEM_PROMPT = """
-你是一个Don't Starve Together Mod设计师。
+st.markdown("""
+<h1 style='text-align:center; font-size:48px;'>
+🌙 AI 饥荒 Mod 生成器
+</h1>
+<p style='text-align:center; opacity:0.7;'>
+在黑暗中创造属于你的世界
+</p>
+""", unsafe_allow_html=True)
 
-输出：
-- 自然语言交流
-- 最后附带JSON
-"""
-
-# =========================
-# 🖥 UI（基本不动）
-# =========================
-st.title("🎮 DST Mod Designer")
-
-if "history" not in st.session_state:
-    st.session_state.history = []
+render_banner()
 
 # =========================
-# 💬 显示历史（恢复按钮消失问题）
+# 🎮 模式选择
 # =========================
-for msg in st.session_state.history:
-    if msg["role"] == "user":
-        st.markdown(f"**👤 你：** {msg['content']}")
-    else:
-        st.markdown(f"**🧠 AI：** {msg['content']}")
+st.markdown("## 🎮 选择模式")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("🚀 快速生成（我已经想好了）"):
+        st.session_state.mode = "fast"
+        st.session_state.messages = []
+
+with col2:
+    if st.button("🧠 探索设计（一起构思）"):
+        st.session_state.mode = "explore"
+        st.session_state.messages = []
+
 
 # =========================
-# 🧠 输入（保持原结构）
+# 🚀 快速生成模式
 # =========================
-user_input = st.text_input("👉 输入你的Mod想法：")
+if st.session_state.mode == "fast":
 
-if st.button("生成") and user_input:
+    st.markdown("### 🚀 快速生成")
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    user_input = st.text_area("描述你的Mod想法（越具体越好）")
 
-    for h in st.session_state.history:
-        messages.append(h)
+    if st.button("✨ 立即生成") and user_input:
 
-    messages.append({"role": "user", "content": user_input})
+        with st.spinner("AI正在构建世界..."):
 
-    raw_output = safe_llm_call(messages)
+            try:
+                design_text = design_with_llm(user_input)
+            except Exception as e:
+                st.error(f"生成失败: {e}")
+                st.stop()
 
-    parsed_json = extract_json(raw_output)
-    display_text = clean_response_for_user(raw_output)
+        st.markdown("## 🧠 设计方案")
+        st.markdown(design_text)
 
-    # 显示结果
-    st.markdown("### 🧠 AI设计师回复")
-    st.markdown(display_text)
+        # 图片（增强沉浸感）
+        try:
+            image_url = generate_boss_image("boss")
+            if image_url:
+                st.image(image_url)
+        except:
+            pass
 
-    with st.expander("⚙️ 查看结构化数据"):
-        if parsed_json:
-            st.json(parsed_json)
-        else:
-            st.code(raw_output)
 
-    # 保存历史
-    st.session_state.history.append({"role": "user", "content": user_input})
-    st.session_state.history.append({"role": "assistant", "content": display_text})
+# =========================
+# 🧠 探索模式（多轮对话）
+# =========================
+if st.session_state.mode == "explore":
+
+    st.markdown("### 🧠 探索模式（对话构思）")
+
+    user_input = st.chat_input("说说你的想法，比如：一个夜晚变强的boss...")
+
+    if user_input:
+        st.session_state.messages.append({
+            "role": "user",
+            "content": user_input
+        })
+
+        try:
+            reply = explore_with_llm(st.session_state.messages)
+        except Exception as e:
+            reply = f"AI有点卡住了：{e}"
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": reply
+        })
+
+    # 渲染聊天
+    render_chat(st.session_state.messages)
+
+    # 👉 进入生成阶段
+    if len(st.session_state.messages) >= 2:
+        if st.button("🌙 我想好了，生成Mod"):
+
+            summary = "\n".join([
+                f"{m['role']}: {m['content']}"
+                for m in st.session_state.messages
+            ])
+
+            st.session_state.final_input = summary
+            st.session_state.mode = "generate"
+
+
+# =========================
+# ⚙️ 统一生成阶段
+# =========================
+if st.session_state.mode == "generate":
+
+    st.markdown("## ⚙️ 正在生成你的Mod...")
+
+    with st.spinner("AI正在把创意变成现实..."):
+
+        try:
+            design_text = design_with_llm(
+                st.session_state.final_input
+            )
+        except Exception as e:
+            st.error(f"生成失败: {e}")
+            st.stop()
+
+    st.markdown("## 🧠 最终设计方案")
+    st.markdown(design_text)
+
+    # 图片
+    try:
+        image_url = generate_boss_image("boss")
+        if image_url:
+            st.image(image_url)
+    except:
+        pass
+
+    # 下载（占位）
+    st.download_button(
+        "📦 下载Mod（开发中）",
+        data="暂未生成代码",
+        file_name="mod.txt"
+    )
+
+
+# =========================
+# 🧪 Debug 面板
+# =========================
+with st.sidebar:
+    st.write("Mode:", st.session_state.mode)
+    st.write("Messages:", len(st.session_state.messages))
