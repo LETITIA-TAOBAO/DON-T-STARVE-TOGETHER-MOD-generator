@@ -1,175 +1,110 @@
 def inject_theme(bg_base64=None):
+    # 如果没有图片，提供一个深色底色防止白屏
+    bg_image = f'url("data:image/png;base64,{bg_base64}")' if bg_base64 else "none"
 
     return f"""
     <style>
-
     /* =========================
-       🌑 全局背景 & 基础风格
+       🌑 全局基础风格
     ========================= */
-
-    html, body, [class*="css"] {{
-        background: transparent !important;
+    
+    /* 1. 核心修复：直接给主容器设置背景，不再使用 ::before/::after 遮罩 */
+    .stApp {{
+        background: 
+            linear-gradient(rgba(10, 10, 10, 0.8), rgba(5, 5, 5, 0.95)), 
+            {bg_image};
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        color: #f5e6c8;
         font-family: "Georgia", "Times New Roman", serif;
     }}
 
-    .stApp {{
-        position: relative;
-        overflow: hidden;
-        color: #f5e6c8;
+    /* 移除所有干扰背景的透明度设置，防止 UI 塌陷 */
+    [data-testid="stAppViewContainer"] {{
+        background-color: transparent !important;
     }}
 
     /* =========================
-       🌲 饥荒风背景层
+       🪵 文字与标题风格
     ========================= */
-
-    .stApp::before {{
-        content: "";
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-
-        background:
-            linear-gradient(
-                rgba(10,10,10,0.78),
-                rgba(5,5,5,0.92)
-            ),
-            url("data:image/png;base64,{bg_base64}");
-
-        background-size: cover;
-        background-position: center;
-        filter: blur(2.5px) contrast(1.1);
-        z-index: -2;
-    }}
-
-    /* 暗角（更压抑氛围） */
-    .stApp::after {{
-        content: "";
-        position: fixed;
-        width: 100%;
-        height: 100%;
-        background: radial-gradient(
-            circle,
-            transparent 35%,
-            rgba(0,0,0,0.88)
-        );
-        z-index: -1;
-    }}
-
-    /* =========================
-       🪵 标题风格（旧书/生存日志）
-    ========================= */
-
-    h1, h2, h3 {{
+    h1, h2, h3, p, span, label {{
         color: #f5e6c8 !important;
-        letter-spacing: 2px;
+        letter-spacing: 1px;
     }}
 
     /* =========================
-       🎮 🔥 核心修复：Streamlit按钮
-       ⚠️ 关键：必须用 data-testid
+       🎮 按钮风格（饥荒木质感）
     ========================= */
-
     div[data-testid="stButton"] > button {{
         background: linear-gradient(
             180deg,
-            rgba(70,55,35,0.95),
-            rgba(40,30,20,0.95)
-        );
-
+            rgba(70, 55, 35, 0.95),
+            rgba(40, 30, 20, 0.95)
+        ) !important;
+        
         color: #f5e6c8 !important;
-
-        border: 1px solid rgba(255, 210, 120, 0.35);
-        border-radius: 12px;
-
-        padding: 10px 18px;
-
-        font-size: 16px;
-        font-weight: 500;
-
-        transition: all 0.2s ease;
-
-        box-shadow:
-            inset 0 0 10px rgba(0,0,0,0.6),
-            0 4px 10px rgba(0,0,0,0.4);
-
-        cursor: pointer;
+        border: 1px solid rgba(255, 210, 120, 0.35) !important;
+        border-radius: 12px !important;
+        padding: 10px 20px !important;
+        font-size: 16px !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 
+            inset 0 0 10px rgba(0,0,0,0.6), 
+            0 4px 10px rgba(0,0,0,0.4) !important;
     }}
 
-    /* hover：轻微“跳动 + 发光” */
     div[data-testid="stButton"] > button:hover {{
-        transform: scale(1.06) rotate(-0.5deg);
-
+        transform: scale(1.05);
         background: linear-gradient(
             180deg,
-            rgba(90,70,45,0.98),
-            rgba(50,35,25,0.98)
-        );
-
-        box-shadow:
-            0 0 18px rgba(255,200,120,0.25),
-            inset 0 0 12px rgba(0,0,0,0.6);
-    }}
-
-    /* active：按下效果 */
-    div[data-testid="stButton"] > button:active {{
-        transform: scale(0.98);
+            rgba(90, 70, 45, 0.98),
+            rgba(50, 35, 25, 0.98)
+        ) !important;
+        box-shadow: 0 0 15px rgba(255, 200, 120, 0.3) !important;
+        color: #fff !important;
     }}
 
     /* =========================
        ⌨️ 输入框（生存笔记本风）
     ========================= */
-
-    textarea, input {{
-        background: rgba(25,20,15,0.92) !important;
+    /* 覆盖 Streamlit 的所有文本输入组件 */
+    div[data-testid="stTextarea"] textarea, 
+    div[data-testid="stTextInput"] input {{
+        background-color: rgba(25, 20, 15, 0.9) !important;
         color: #f5e6c8 !important;
-
+        border: 1px solid rgba(255, 220, 150, 0.3) !important;
         border-radius: 10px !important;
-        border: 1px solid rgba(255,220,150,0.25) !important;
-
-        padding: 10px !important;
-
-        box-shadow: inset 0 0 8px rgba(0,0,0,0.6);
-    }}
-
-    textarea:focus, input:focus {{
-        border: 1px solid rgba(255,200,120,0.5) !important;
-        outline: none !important;
+        box-shadow: inset 0 0 8px rgba(0,0,0,0.8) !important;
     }}
 
     /* =========================
-       💬 聊天气泡（旧日志风）
+       💬 聊天气泡风格
     ========================= */
-
     .stChatMessage {{
-        background: rgba(40,32,22,0.75);
-        border: 1px solid rgba(255,220,150,0.12);
-
-        backdrop-filter: blur(6px);
-
-        border-radius: 12px;
-        padding: 10px 12px;
-
-        box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        background: rgba(40, 32, 22, 0.7) !important;
+        border: 1px solid rgba(255, 220, 150, 0.15) !important;
+        backdrop-filter: blur(8px);
+        border-radius: 15px !important;
+        color: #f5e6c8 !important;
+        margin-bottom: 10px !important;
     }}
 
     /* =========================
-       📜 sidebar（地图/笔记风）
+       📜 侧边栏（地图风格）
     ========================= */
-
     section[data-testid="stSidebar"] {{
-        background: rgba(15,12,10,0.85);
-        border-right: 1px solid rgba(255,220,150,0.15);
+        background: rgba(15, 12, 10, 0.9) !important;
+        border-right: 1px solid rgba(255, 210, 120, 0.2) !important;
     }}
 
-    /* =========================
-       🔥 隐藏Streamlit默认水印感UI
-    ========================= */
-
+    /* 隐藏 Streamlit 默认的水印和页脚 */
     footer {{
         visibility: hidden;
     }}
 
+    #MainMenu {{
+        visibility: hidden;
+    }}
     </style>
     """
