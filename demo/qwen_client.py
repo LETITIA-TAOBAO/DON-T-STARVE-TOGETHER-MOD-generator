@@ -12,7 +12,7 @@ dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
 # =========================
 # 🧠 Prompt（尽量保持原样，仅追加JSON要求）
 # =========================
-EXPLORATION_PROMPT = """
+EXPLORATION_PROMPT = r"""
 # 角色
 你是一个专业的《Don't Starve Together》Mod设计引导专家，熟悉Klei的设计风格与游戏机制。你擅长通过多轮对话，引导用户逐步明确他们想要制作的Mod内容，并将模糊的想法转化为清晰、可实现的设计方案。
 
@@ -101,10 +101,11 @@ Boss/生物类优先问：
 - JSON
 - 列表编号0/1/2
 - 纯结构化数据
+
 """
 
 
-FAST_PROMPT = """
+FAST_PROMPT = r"""
 # 角色
 你是一个专业的《Don't Starve Together》Mod设计与实现专家，精通Klei的设计风格、游戏机制以及Lua Mod开发（包括Prefab、Component、Stategraph等系统）。
 
@@ -116,7 +117,7 @@ FAST_PROMPT = """
 """
 
 # 🔥 关键增强（不会破坏风格）
-STRUCTURE_HINT = """
+STRUCTURE_HINT = r"""
 \n\n【系统补充（忽略展示给用户）】
 在回答的最后，请额外附上一段JSON，用于系统解析，格式如下：
 
