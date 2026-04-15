@@ -6,15 +6,17 @@ import zipfile
 import requests
 from datetime import datetime
 
-# 导入 LLM 模块
+# ========================
+# ⚠️ LLM 导入
+# ========================
 try:
     from qwen_client import explore_with_llm, design_with_llm, optimize_visual_prompt
 except ImportError as e:
-    st.error(f"❌ 无法导入模块：{e}")
+    st.error(f"❌ 模块加载失败：{e}")
     st.stop()
 
 # ========================
-# 🔧 Session State 初始化
+# 🔧 Session State (关键！修复流程问题)
 # ========================
 if "mode" not in st.session_state:
     st.session_state.mode = "home"
@@ -22,16 +24,18 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "generated_mods" not in st.session_state:
     st.session_state.generated_mods = []
-if "is_generating" not in st.session_state:
-    st.session_state.is_generating = False
 if "final_design" not in st.session_state:
     st.session_state.final_design = ""
+# ⭐⭐⭐⭐⭐ 新增：确认标志 ⭐⭐⭐⭐⭐
+if "confirmed_generate" not in st.session_state:
+    st.session_state.confirmed_generate = False
 
 # ========================
-# 📸 图片资源路径
+# 📸 图片资源路径（GitHub Raw）
 # ========================
-GITHUB_REPO_NAME = "LETITIA-TAOBAO/DON-T-STARVE-TOGETHER-MOD-generator"
-ASSETS_PATH = f"https://raw.githubusercontent.com/{GITHUB_REPO_NAME}/main/assets/"
+GITHUB_USER = "LETITIA-TAOBAO"
+GITHUB_REPO = "DON-T-STARVE-TOGETHER-MOD-generator"
+ASSETS_PATH = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/main/assets/"
 
 IMAGES = {
     "bg": f"{ASSETS_PATH}background.jpg.png",
@@ -41,254 +45,244 @@ IMAGES = {
 }
 
 # ========================
-# 🎨 CSS 样式（使用你的自定义图片）
+# 🎨 CSS 样式（重点：应用你的图片）
 # ========================
-st.markdown("""
+STYLES = f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Griffy&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap');
 
 /* ========== 全局背景 ========== */
-.stApp {
-    background-image: url("https://raw.githubusercontent.com/LETITIA-TAOBAO/DON-T-STARVE-TOGETHER-MOD-generator/main/assets/background.jpg.png");
+.stApp {{
+    background-image: url("{IMAGES['bg']}");
     background-size: cover !important;
     background-position: center !important;
     background-attachment: fixed !important;
-    background-color: transparent !important;
     min-height: 100vh;
-}
+}}
 
-html, body, [class*="css"] {
+html, body, [class*="css"] {{
     background-color: transparent !important;
-    background: transparent !important;
-}
+}}
 
-/* ========== 暗色遮罩层 ========== */
-.stApp::before {
+.stApp::before {{
     content: "";
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    z-index: -1 !important;
+    z-index: -1;
     background: linear-gradient(rgba(20,15,10,0.6), rgba(15,10,5,0.8));
-    pointer-events: none;
-}
+}}
 
-h1, h2, h3 {
-    font-family: 'Creepster', cursive !important;
-    color: #FFD700 !important;
-    text-shadow: 0 0 15px rgba(255,215,0,0.5);
-}
+h1, h2, h3 {{ font-family: 'Creepster' !important; color: #FFD700 !important; }}
+p, span, div, label {{ font-family: 'IM Fell English SC' !important; color: #F5E6C8 !important; }}
 
-p, span, div, label {
-    font-family: 'IM Fell English SC', serif !important;
-    color: #F5E6C8 !important;
-}
+/* ========== ⭐⭐⭐⭐⭐ 自定义按钮 ⭐⭐⭐⭐⭐ ========== */
+.btn-mode-wrapper {{
+    width: 100%;
+    max-width: 450px;
+    margin: 20px auto;
+}}
 
-/* ========== ⭐⭐⭐⭐⭐ 自定义按钮样式 ⭐⭐⭐⭐⭐ ========== */
-.custom-mode-btn {
+.btn-custom {{
     width: 100% !important;
     height: 90px !important;
+    border: none !important;
     background-size: cover !important;
     background-position: center !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    opacity: 0.95;
+    background-repeat: no-repeat !important;
+    opacity: 0.9;
     transition: all 0.3s ease !important;
     cursor: pointer !important;
-}
+}}
 
-.custom-mode-btn:hover {
-    transform: scale(1.08) translateY(-3px) !important;
+.btn-custom:hover {{
+    transform: scale(1.05) translateY(-3px) !important;
     opacity: 1 !important;
-    filter: brightness(1.15) !important;
+    filter: brightness(1.15);
     box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important;
-}
+}}
 
-.custom-mode-btn:active {
-    transform: scale(0.98) !important;
-}
+.btn-custom:active {{ transform: scale(0.98) !important; }}
 
-/* ========== ⭐⭐⭐⭐⭐ 自定义对话框样式 ⭐⭐⭐⭐⭐ ========== */
-.chat-box-custom {
-    background: transparent !important;
+/* ========== ⭐⭐⭐⭐⭐ 对话框背景 ⭐⭐⭐⭐⭐ ========== */
+[data-testid="stChatInput"] textarea {{
+    background-image: url("{IMAGES['chat_box']}") !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-color: rgba(40,30,20,0.85) !important;
     border: none !important;
-    position: relative !important;
-    padding: 15px !important;
-    margin: 15px 0 !important;
     color: #F5E6C8 !important;
-}
-
-.chat-box-custom::before {
-    content: "";
-    position: absolute;
-    top: -10px; left: -10px; right: -10px; bottom: -10px;
-    border-radius: 12px;
-    z-index: -1;
-}
-
-[data-testid="stChatInput"] textarea {
-    background-color: rgba(40,30,20,0.95) !important;
-    border: 3px solid #8B4513 !important;
-    color: #F5E6C8 !important;
-    border-radius: 8px !important;
-    font-family: 'IM Fell English SC', serif !important;
-    font-size: 16px !important;
+    font-family: 'IM Fell English SC' !important;
     padding: 20px !important;
-    min-height: 100px !important;
-    box-shadow: inset 0 0 15px rgba(0,0,0,0.6) !important;
-}
+    min-height: 120px !important;
+}}
 
-[data-testid="stChatInput"] textarea:focus {
+[data-testid="stChatInput"] textarea:focus {{
     outline: none !important;
     border-color: #FFA726 !important;
-}
+}}
 
 /* ========== 侧边栏 ========== */
-section[data-testid="stSidebar"] {
+section[data-testid="stSidebar"] {{
     background: rgba(25,15,8,0.98) !important;
     border-right: 4px solid #8B4513 !important;
-}
+}}
+section[data-testid="stSidebar"] * {{ color: #F5E6C8 !important; }}
 
-section[data-testid="stSidebar"] * {
-    color: #F5E6C8 !important;
-}
-
-/* ========== 滚动条 ========== */
-::-webkit-scrollbar { width: 8px !important; }
-::-webkit-scrollbar-thumb { background: #8B4513 !important; border-radius: 4px !important; }
-::-webkit-scrollbar-track { background: rgba(10,5,3,0.8) !important; }
-
-/* ========== Banner 框 ========== */
-.banner-box {
+/* ========== Banner ========== */
+.banner-box {{
     background: rgba(30,20,10,0.75) !important;
     border: 3px solid #A67C3B !important;
     padding: 40px !important;
     border-radius: 12px !important;
-    box-shadow: 0 0 40px rgba(0,0,0,0.8), inset 0 0 30px rgba(0,0,0,0.5) !important;
-}
+    text-align: center !important;
+    margin: 30px auto !important;
+    max-width: 900px !important;
+    box-shadow: 0 0 40px rgba(0,0,0,0.8) !important;
+}}
 
-/* ========== 模式说明卡片 ========== */
-.mode-card {
-    flex: 1;
-    min-width: 280px;
-    max-width: 450px;
+/* ========== ⭐⭐⭐⭐⭐ 说明卡片横排 ⭐⭐⭐⭐⭐ ========== */
+.cards-container {{
+    display: flex !important;
+    gap: 30px !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    margin: 40px auto !important;
+    max-width: 950px !important;
+}}
+
+.card-row {{
+    display: flex !important;
+    gap: 30px !important;
+    justify-content: center !important;
+}}
+
+.mode-card {{
+    flex: 1 !important;
+    min-width: 320px !important;
+    max-width: 480px !important;
     padding: 25px !important;
     border-radius: 8px !important;
     position: relative !important;
     transition: all 0.3s ease !important;
-}
+}}
 
-.mode-card:hover {
+.mode-card:hover {{
     transform: translateY(-5px) !important;
     box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
-}
+}}
 
-.card-rapid {
+.card-rapid {{
     background: rgba(30,20,10,0.75) !important;
     border: 2px solid #aa7733 !important;
-}
+}}
 
-.card-explore {
+.card-explore {{
     background: rgba(20,30,20,0.75) !important;
     border: 2px solid #668844 !important;
-}
+}}
 
-.card-icon {
+.card-icon {{
     position: absolute;
     top: -15px; right: -15px;
     font-size: 30px !important;
     transform: rotate(45deg);
-}
+}}
 
-.card-title {
-    font-family: Creepster, cursive !important;
+.card-title {{
+    font-family: Creepster !important;
     text-align: center !important;
     margin: 0 0 15px 0 !important;
-}
+    font-size: 1.5rem !important;
+}}
 
-.card-text {
-    font-family: "IM Fell English SC", serif !important;
+.card-text {{
+    font-family: "IM Fell English SC" !important;
     font-size: 0.95rem !important;
     line-height: 1.7 !important;
     text-align: center !important;
     color: #d4c4a0 !important;
-}
+}}
 
-.card-english {
+.card-english {{
     color: #888 !important;
     font-size: 0.8em !important;
     font-style: italic !important;
     display: block !important;
     margin-top: 12px !important;
-}
+}}
 
-.cards-container {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-top: 30px !important;
-}
+/* ========== 聊天消息框 ========== */
+.chat-message {{
+    background: rgba(30,20,10,0.9) !important;
+    border-left: 4px solid #FF8C00 !important;
+    padding: 15px !important;
+    margin: 15px 0 !important;
+    border-radius: 0 8px 8px 0 !important;
+}}
+
+.chat-message-assistant {{
+    background: rgba(20,30,20,0.9) !important;
+    border-left: 4px solid #66BB6A !important;
+}}
+
+/* ========== 滚动条 ========== */
+::-webkit-scrollbar {{ width: 8px !important; }}
+::-webkit-scrollbar-thumb {{ background: #8B4513 !important; border-radius: 4px !important; }}
 </style>
-""", unsafe_allow_html=True)
+"""
+
+st.markdown(STYLES, unsafe_allow_html=True)
 
 # ========================
 # Banner
 # ========================
-st.markdown(f'''
-<div class="banner-box" style='text-align:center;margin:30px auto;max-width:900px;'>
-<h1 style='font-size:3.5rem;margin:0;text-shadow:0 0 25px rgba(255,215,0,0.6);'>饥荒 MOD 生成器</h1>
-<p style='font-family:Griffy;color:#aa8855;font-size:1.4rem;letter-spacing:3px;margin-top:10px;'>DON'T STARVE TOGETHER MOD GENERATOR</p>
-<hr style='width:50%;border:none;border-top:2px solid #8B4513;margin:20px auto;'>
-<p style='line-height:1.8;font-size:1.1rem;max-width:800px;margin:0 auto;'>
+st.markdown('''
+<div class="banner-box">
+<h1 style="font-size:3.5rem;margin:0;text-shadow:0 0 25px rgba(255,215,0,0.6);">饥荒 MOD 生成器</h1>
+<p style="font-family:Griffy;color:#aa8855;font-size:1.4rem;letter-spacing:3px;margin-top:10px;">DON'T STARVE TOGETHER MOD GENERATOR</p>
+<hr style="width:50%;border:none;border-top:2px solid #8B4513;margin:20px auto;">
+<p style="line-height:1.8;font-size:1.1rem;max-width:800px;margin:0 auto;">
 当理智归零，现实崩塌。<br>
-<span style='color:#FFA726;text-shadow:0 0 10px rgba(255,167,38,0.5);'>You are no longer a survivor, but a Creator.</span>
+<span style="color:#FFA726;text-shadow:0 0 10px rgba(255,167,38,0.5);">You are no longer a survivor, but a Creator.</span>
 </p>
 </div>
 ''', unsafe_allow_html=True)
 
 # ========================
-# ⭐⭐⭐⭐⭐ 自定义图片按钮 ⭐⭐⭐⭐⭐
+# ⭐⭐⭐⭐⭐ 自定义按钮 ⭐⭐⭐⭐⭐
 # ========================
 col1, col2 = st.columns([1, 1], gap="large")
 
 with col1:
-    st.markdown(f'''
-    <style>
-    #rapid_btn {{
-        background-image: url('{IMAGES["btn_rapid"]}') !important;
-        background-repeat: no-repeat !important;
-    }}
-    </style>
-    ''', unsafe_allow_html=True)
+    st.markdown('''<div class="btn-mode-wrapper">''', unsafe_allow_html=True)
     
     if st.button("", key="rapid_btn", use_container_width=True):
         st.session_state.mode = "rapid"
         st.session_state.messages = []
+        st.session_state.final_design = ""
+        st.session_state.confirmed_generate = False
         st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with col2:
-    st.markdown(f'''
-    <style>
-    #explore_btn {{
-        background-image: url('{IMAGES["btn_explore"]}') !important;
-        background-repeat: no-repeat !important;
-    }}
-    </style>
-    ''', unsafe_allow_html=True)
+    st.markdown('''<div class="btn-mode-wrapper">''', unsafe_allow_html=True)
     
     if st.button("", key="explore_btn", use_container_width=True):
         st.session_state.mode = "explore"
         st.session_state.messages = []
+        st.session_state.final_design = ""
+        st.session_state.confirmed_generate = False
         st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# 按钮下方的模式说明卡片
+# ⭐⭐⭐⭐⭐ 说明卡片横排 ⭐⭐⭐⭐⭐
 st.markdown('<div class="cards-container">', unsafe_allow_html=True)
 
-st.markdown(f'''
+st.markdown('''
 <div class="mode-card card-rapid">
     <div class="card-icon">✷</div>
     <h3 class="card-title" style="color: #ffaa60;">🔥 意志铸剑者</h3>
@@ -296,16 +290,19 @@ st.markdown(f'''
 </div>
 ''', unsafe_allow_html=True)
 
-st.markdown(f'''
-    <div class="mode-card card-explore">
-        <div class="card-icon">✷</div>
-        <h3 class="card-title" style="color: #aadd88;">👁️ 迷雾探路者</h3>
-        <p class="card-text">当灵感如迷雾般在你脑海中低语<br>混沌尚未凝聚成形<br>与暗影对话，在反复试探中让疯狂的蓝图逐渐清晰<br><br><span class="card-english">For when inspiration is foggy. Talk to the Shadow.</span></p>
-    </div>
+st.markdown('''
+<div class="mode-card card-explore">
+    <div class="card-icon">✷</div>
+    <h3 class="card-title" style="color: #aadd88;">👁️ 迷雾探路者</h3>
+    <p class="card-text">当灵感如迷雾般在你脑海中低语<br>混沌尚未凝聚成形<br>与暗影对话，在反复试探中让疯狂的蓝图逐渐清晰<br><br><span class="card-english">For when inspiration is foggy. Talk to the Shadow.</span></p>
 </div>
 ''', unsafe_allow_html=True)
 
-# 模式确认
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ========================
+# 模式确认提示
+# ========================
 if st.session_state.mode != "home":
     mode_map = {
         "rapid": ("⚡", "#FFD700", "**快速生成模式已激活**"),
@@ -315,7 +312,7 @@ if st.session_state.mode != "home":
     st.markdown(f"<div style='text-align:center;padding:15px;margin:20px 0;border:2px dashed {color};'><h3 style='color:{color};font-family:Creepster;'>{icon} {text}</h3></div>", unsafe_allow_html=True)
 
 # ========================
-# 💬 聊天处理
+# 💬 聊天处理（修复流程：先对话，再生成）
 # ========================
 def generate_atlas_xml():
     return '''<?xml version="1.0" encoding="utf-8"?>
@@ -367,34 +364,37 @@ if st.session_state.mode == "explore":
     st.write("💬 **与暗影设计助手对话以明确设计思路**")
     
     user_input = st.chat_input("描述你的想法...")
-    if user_input and not st.session_state.is_generating:
+    if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
-        st.session_state.is_generating = True
         st.rerun()
     
+    # ⭐⭐⭐⭐⭐ 检查是否有足够对话才显示生成按钮 ⭐⭐⭐⭐⭐
     if len(st.session_state.messages) >= 2:
-        last_msg = st.session_state.messages[-1]['content'].lower()
-        if any(word in last_msg for word in ['yes', '是', '生成了', '生成', 'create']):
-            col1, col2 = st.columns([3, 1])
-            with col2:
-                if st.button("✨ 生成最终 Mod", key="gen_from_explore", use_container_width=True):
-                    summary = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
-                    st.session_state.final_design = summary
-                    st.session_state.mode = "generating"
-                    st.rerun()
+        st.markdown("---")
+        st.markdown("<div style='text-align:center;margin:30px 0;'>", unsafe_allow_html=True)
+        
+        col1_check, col2_check = st.columns([3, 1])
+        with col2_check:
+            if st.button("✨ 生成最终 Mod", key="gen_from_explore", use_container_width=True):
+                summary = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
+                st.session_state.final_design = summary
+                st.session_state.mode = "generating"
+                st.rerun()
+        
+        st.markdown("</div>", unsafe_allow_html=True)
 
 elif st.session_state.mode == "rapid":
     user_input = st.chat_input("输入你的完整 Mod 构想...")
-    if user_input and not st.session_state.is_generating:
+    if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
         st.session_state.final_design = user_input
-        st.session_state.is_generating = True
+        st.session_state.mode = "generating"
         st.rerun()
 
 # ========================
-# ⏳ 生成阶段
+# ⏳ 生成阶段（仅在点击生成按钮后）
 # ========================
-if st.session_state.is_generating:
+if st.session_state.mode == "generating":
     st.markdown("<div style='text-align:center;padding:40px;'><h2 style='font-family:Creepster;font-size:2.5rem;color:#FFD700;'>世界正在扭曲......</h2><p style='margin-top:20px;'>The shadows are weaving your madness...</p></div>", unsafe_allow_html=True)
     
     progress_bar = st.progress(0)
@@ -442,7 +442,6 @@ if st.session_state.is_generating:
             "icon_generated": icon_result["success"]
         })
     
-    st.session_state.is_generating = False
     st.session_state.mode = "generated"
     st.rerun()
 
@@ -454,10 +453,11 @@ if st.session_state.messages:
         if isinstance(msg, dict):
             role = msg.get('role', 'user')
             content = msg.get('content', '')
+            css_class = 'chat-message' if role == 'user' else 'chat-message chat-message-assistant'
             color = '#FF8C00' if role == 'user' else '#66BB6A'
             name = '求生者' if role == 'user' else '暗影设计助手'
             
-            st.markdown(f"<div class='chat-box-custom' style='background:rgba(30,20,10,0.9);border-left:4px solid {color};padding:15px;margin:15px 0;color:#F5E6C8;'><b style='color:{color};font-family:Creepster;'>{name}</b><br>{content}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='{css_class}'><b style='color:{color};font-family:Creepster;'>{name}</b><br>{content}</div>", unsafe_allow_html=True)
 
 # ========================
 # 📦 侧边栏
@@ -486,6 +486,7 @@ with st.sidebar:
                     st.session_state.mode = "explore"
                     st.session_state.final_design = mod.get('design', '')
                     st.session_state.messages = [{"role": "user", "content": mod.get('design', '')}]
+                    st.session_state.generated_mods = [m for m in st.session_state.generated_mods if m['id'] != mod['id']]
                     st.rerun()
     
     st.divider()
