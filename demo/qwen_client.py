@@ -3,14 +3,11 @@ import os
 import json
 import re
 
-# =========================
-# 🔐 API Key
-# =========================
 dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
 
 
 # =========================
-# 🧠 Prompt（尽量保持原样，仅追加JSON要求）
+# 🧠 Prompt（完全不动）
 # =========================
 EXPLORATION_PROMPT = r'''
 # 角色
@@ -101,9 +98,7 @@ Boss/生物类优先问：
 - JSON
 - 列表编号0/1/2
 - 纯结构化数据
-
 '''
-
 
 FAST_PROMPT = r'''
 # 角色
@@ -116,7 +111,6 @@ FAST_PROMPT = r'''
 ⚠️ 禁止输出JSON或键值对格式，必须使用自然语言 + 结构化分段。
 '''
 
-# 🔥 关键增强（不会破坏风格）
 STRUCTURE_HINT = r'''
 \n\n【系统补充（忽略展示给用户）】
 在回答的最后，请额外附上一段JSON，用于系统解析，格式如下：
@@ -130,14 +124,19 @@ STRUCTURE_HINT = r'''
 
 
 # =========================
-# 🧠 提取JSON（核心能力）
+# 🧠 JSON 提取（修复版）
 # =========================
 def extract_json(text):
-
     try:
-        match = re.search(r"\{.*\}", text, re.S)
-        if match:
-            return json.loads(match.group())
+        # ✅ 找最后一个 JSON（更稳定）
+        matches = re.findall(r"\{[\s\S]*?\}", text)
+
+        for m in reversed(matches):
+            try:
+                return json.loads(m)
+            except:
+                continue
+
     except:
         pass
 
@@ -145,31 +144,28 @@ def extract_json(text):
 
 
 # =========================
-# 🧹 清洗文本（只给用户看）
+# 🧹 清洗文本（修复版）
 # =========================
 def clean_text(text):
-
     if not text:
         return "（AI没有返回内容）"
 
-    # ❌ 去掉JSON部分
-    text = re.sub(r"\{.*\}", "", text, flags=re.S)
+    # ✅ 只删 STRUCTURE_HINT JSON（更安全）
+    text = re.sub(r"\n*\{[\s\S]*?\}\s*$", "", text).strip()
 
-    text = text.strip()
-
-    # ❌ 去掉 0: 1:
     lines = text.split("\n")
     cleaned = []
 
     for line in lines:
         line = line.strip()
 
+        # 去掉 "1:" "2:" 这种编号
         if len(line) > 2 and line[0].isdigit() and ":" in line[:4]:
             line = line.split(":", 1)[-1].strip()
 
         cleaned.append(line)
 
-    return "\n".join(cleaned)
+    return "\n".join(cleaned).strip()
 
 
 # =========================
@@ -179,7 +175,7 @@ def call_qwen(user_input="", mode="explore", messages=None):
 
     base_prompt = EXPLORATION_PROMPT if mode == "explore" else FAST_PROMPT
 
-    # 👉 自动拼接结构化提示
+    # ⚠️ 保持你原逻辑（不改prompt）
     system_prompt = base_prompt + STRUCTURE_HINT
 
     if messages:
@@ -199,10 +195,7 @@ def call_qwen(user_input="", mode="explore", messages=None):
 
         raw_text = response.output.choices[0].message.content
 
-        # 🧠 提取结构化数据
         parsed = extract_json(raw_text)
-
-        # 🧹 清洗给用户的文本
         clean = clean_text(raw_text)
 
         return {
@@ -212,11 +205,7 @@ def call_qwen(user_input="", mode="explore", messages=None):
 
     except Exception as e:
         return {
-            "text": f"""我刚刚在连接设计引擎的时候出了点小问题：
-
-{str(e)}
-
-你可以再试一次，我们一起把这个Mod设计出来。""",
+            "text": f"连接失败：{str(e)}",
             "data": None
         }
 
@@ -225,10 +214,8 @@ def call_qwen(user_input="", mode="explore", messages=None):
 # 🎯 对外接口
 # =========================
 def design_with_llm(user_input):
-    result = call_qwen(user_input, mode="fast")
-    return result
+    return call_qwen(user_input, mode="fast")
 
 
 def explore_with_llm(messages):
-    result = call_qwen("", mode="explore", messages=messages)
-    return result
+    return call_qwen("", mode="explore", messages=messages)
