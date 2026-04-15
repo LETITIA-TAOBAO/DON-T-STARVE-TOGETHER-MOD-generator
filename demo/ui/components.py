@@ -2,9 +2,6 @@ import streamlit as st
 
 
 def render_banner():
-    """
-    中央祭坛风格 Banner - 双语版
-    """
     st.markdown("""
     <div style="
         background: linear-gradient(
@@ -26,13 +23,11 @@ def render_banner():
         text-align: center;
         position: relative;
     ">
-        <!-- 装饰性荆棘 -->
         <div style="position: absolute; top: -10px; left: -10px; font-size: 30px; opacity: 0.5; filter: grayscale(100%) brightness(0.7); transform: rotate(-45deg);">🌿</div>
         <div style="position: absolute; top: -10px; right: -10px; font-size: 30px; opacity: 0.5; filter: grayscale(100%) brightness(0.7); transform: rotate(45deg);">🌿</div>
         <div style="position: absolute; bottom: -10px; left: -10px; font-size: 30px; opacity: 0.5; filter: grayscale(100%) brightness(0.7); transform: rotate(-135deg);">🌿</div>
         <div style="position: absolute; bottom: -10px; right: -10px; font-size: 30px; opacity: 0.5; filter: grayscale(100%) brightness(0.7); transform: rotate(135deg);">🌿</div>
         
-        <!-- 主标题：中文 -->
         <h1 style="
             font-family: 'Creepster', cursive;
             color: #ffd280;
@@ -45,7 +40,6 @@ def render_banner():
             letter-spacing: 6px;
         ">饥荒MOD生成器</h1>
         
-        <!-- 副标题：英文 -->
         <p style="
             font-family: 'Creepster', cursive;
             color: rgba(200, 160, 100, 0.9);
@@ -56,7 +50,6 @@ def render_banner():
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
         ">Don't Starve Together Mod Generator</p>
         
-        <!-- 分割线 -->
         <div style="
             width: 60%;
             height: 2px;
@@ -71,7 +64,6 @@ def render_banner():
             );
         "></div>
         
-        <!-- 中文介绍 -->
         <p style="
             font-family: 'Griffy', cursive;
             color: rgba(220, 200, 160, 0.95);
@@ -88,7 +80,6 @@ def render_banner():
             用代码编织噩梦，在生存与毁灭的边界创造疯狂。
         </p>
         
-        <!-- 英文介绍 -->
         <p style="
             font-family: 'Griffy', cursive;
             color: rgba(180, 160, 120, 0.7);
@@ -108,9 +99,6 @@ def render_banner():
 
 
 def render_chat(messages):
-    """
-    渲染聊天记录 - 双语标签
-    """
     for msg in messages:
         role = msg.get("role", "user")
         content = msg.get("content", "")
@@ -162,9 +150,6 @@ def render_chat(messages):
 
 
 def render_loading(zh_text="正在生成世界...", en_text="GENERATING WORLD..."):
-    """
-    饥荒风格的加载动画 - 双语
-    """
     loading_html = f"""
     <div style="
         display: flex;
@@ -187,13 +172,11 @@ def render_loading(zh_text="正在生成世界...", en_text="GENERATING WORLD...
         position: relative;
         overflow: hidden;
     ">
-        <!-- 装饰性荆棘 -->
         <div style="position: absolute; top: 5px; left: 5px; font-size: 20px; opacity: 0.3; filter: grayscale(100%);">🌿</div>
         <div style="position: absolute; top: 5px; right: 5px; font-size: 20px; opacity: 0.3; filter: grayscale(100%); transform: scaleX(-1);">🌿</div>
         <div style="position: absolute; bottom: 5px; left: 5px; font-size: 20px; opacity: 0.3; filter: grayscale(100%); transform: scaleY(-1);">🌿</div>
         <div style="position: absolute; bottom: 5px; right: 5px; font-size: 20px; opacity: 0.3; filter: grayscale(100%); transform: scale(-1, -1);">🌿</div>
         
-        <!-- 旋转动画 -->
         <div style="
             width: 70px;
             height: 70px;
@@ -225,7 +208,6 @@ def render_loading(zh_text="正在生成世界...", en_text="GENERATING WORLD...
         }}
         </style>
         
-        <!-- 中文文字 -->
         <p style="
             margin-top: 25px;
             font-family: 'Creepster', cursive;
@@ -238,7 +220,6 @@ def render_loading(zh_text="正在生成世界...", en_text="GENERATING WORLD...
             {zh_text}
         </p>
         
-        <!-- 英文文字 -->
         <p style="
             font-family: 'Griffy', cursive;
             color: rgba(200, 180, 140, 0.7);
@@ -250,7 +231,6 @@ def render_loading(zh_text="正在生成世界...", en_text="GENERATING WORLD...
             {en_text}
         </p>
         
-        <!-- 底部提示 -->
         <p style="
             margin-top: 15px;
             font-family: 'Griffy', cursive;
@@ -266,9 +246,6 @@ def render_loading(zh_text="正在生成世界...", en_text="GENERATING WORLD...
 
 
 def render_mode_indicator(zh_mode, en_mode):
-    """
-    显示当前选中的模式 - 双语
-    """
     indicator_html = f"""
     <div style="
         background: linear-gradient(
