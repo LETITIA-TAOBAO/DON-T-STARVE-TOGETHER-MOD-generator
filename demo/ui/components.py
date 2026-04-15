@@ -2,6 +2,9 @@ import streamlit as st
 
 
 def render_banner():
+    """
+    中央祭坛风格 Banner - 双语版 + 双模式说明
+    """
     st.markdown("""
     <div style="
         background: linear-gradient(
@@ -19,15 +22,17 @@ def render_banner():
         border-radius: 8px;
         padding: 40px 30px;
         margin: 20px auto 40px auto;
-        max-width: 800px;
+        max-width: 900px;
         text-align: center;
         position: relative;
     ">
+        <!-- 四角装饰性荆棘 -->
         <div style="position: absolute; top: -10px; left: -10px; font-size: 30px; opacity: 0.5; filter: grayscale(100%) brightness(0.7); transform: rotate(-45deg);">🌿</div>
         <div style="position: absolute; top: -10px; right: -10px; font-size: 30px; opacity: 0.5; filter: grayscale(100%) brightness(0.7); transform: rotate(45deg);">🌿</div>
         <div style="position: absolute; bottom: -10px; left: -10px; font-size: 30px; opacity: 0.5; filter: grayscale(100%) brightness(0.7); transform: rotate(-135deg);">🌿</div>
         <div style="position: absolute; bottom: -10px; right: -10px; font-size: 30px; opacity: 0.5; filter: grayscale(100%) brightness(0.7); transform: rotate(135deg);">🌿</div>
         
+        <!-- 主标题：中文 -->
         <h1 style="
             font-family: 'Creepster', cursive;
             color: #ffd280;
@@ -40,6 +45,7 @@ def render_banner():
             letter-spacing: 6px;
         ">饥荒MOD生成器</h1>
         
+        <!-- 副标题：英文 -->
         <p style="
             font-family: 'Creepster', cursive;
             color: rgba(200, 160, 100, 0.9);
@@ -50,6 +56,7 @@ def render_banner():
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
         ">Don't Starve Together Mod Generator</p>
         
+        <!-- 分割线 -->
         <div style="
             width: 60%;
             height: 2px;
@@ -64,6 +71,7 @@ def render_banner():
             );
         "></div>
         
+        <!-- 中文介绍 -->
         <p style="
             font-family: 'Griffy', cursive;
             color: rgba(220, 200, 160, 0.95);
@@ -80,6 +88,7 @@ def render_banner():
             用代码编织噩梦，在生存与毁灭的边界创造疯狂。
         </p>
         
+        <!-- 英文介绍 -->
         <p style="
             font-family: 'Griffy', cursive;
             color: rgba(180, 160, 120, 0.7);
@@ -87,18 +96,147 @@ def render_banner():
             line-height: 1.6;
             font-style: italic;
             max-width: 600px;
-            margin: 0 auto;
+            margin: 0 auto 30px auto;
             letter-spacing: 1px;
         ">
             When sanity reaches zero, and shadow creatures lurk by the campfire,<br>
             the true creator awakens. This is not a workshop, but an altar of forbidden knowledge.<br>
             Weave nightmares with code, create madness on the edge of survival and destruction.
         </p>
+
+        <!-- 🎮 双模式说明卡片 -->
+        <div style="
+            width: 40%;
+            height: 1px;
+            margin: 25px auto;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 140, 60, 0.3),
+                transparent
+            );
+        "></div>
+        
+        <div style="
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+            max-width: 800px;
+            margin: 0 auto;
+        ">
+            <!-- 速铸模式卡片 -->
+            <div style="
+                flex: 1;
+                min-width: 280px;
+                background: rgba(40, 30, 20, 0.6);
+                border: 1px solid rgba(255, 180, 80, 0.2);
+                border-top: 3px solid rgba(255, 140, 60, 0.5);
+                border-radius: 6px;
+                padding: 20px;
+                text-align: left;
+                position: relative;
+                box-shadow: inset 0 0 15px rgba(0,0,0,0.4);
+            ">
+                <div style="
+                    font-family: 'Creepster', cursive;
+                    color: #ffaa60;
+                    font-size: 1.3rem;
+                    margin-bottom: 8px;
+                    letter-spacing: 2px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                ">
+                    <span style="font-size: 1.5rem;">⚡</span>
+                    速铸模式
+                    <span style="font-size: 0.75rem; color: rgba(200,180,140,0.6); margin-left: auto; letter-spacing: 1px;">RAPID FORGING</span>
+                </div>
+                <p style="
+                    font-family: 'Griffy', cursive;
+                    color: rgba(220, 200, 170, 0.9);
+                    font-size: 0.95rem;
+                    line-height: 1.7;
+                    margin: 0 0 10px 0;
+                ">
+                    当你的脑海中已然浮现完整的疯狂蓝图，直接将其实物化。<br>
+                    <span style="color: #ffaa60;">无需徘徊</span>，立即生成可执行的Mod圣物。
+                </p>
+                <p style="
+                    font-family: 'Griffy', cursive;
+                    color: rgba(180, 160, 130, 0.7);
+                    font-size: 0.8rem;
+                    font-style: italic;
+                    line-height: 1.5;
+                    margin: 0;
+                    border-top: 1px solid rgba(255,200,150,0.1);
+                    padding-top: 8px;
+                ">
+                    When the complete blueprint of madness haunts your mind, materialize it directly. No wandering—generate the executable Mod artifact immediately.
+                </p>
+                <div style="position: absolute; bottom: -8px; right: -5px; font-size: 18px; opacity: 0.4; filter: grayscale(100%) brightness(0.6);">🌿</div>
+            </div>
+
+            <!-- 深潜模式卡片 -->
+            <div style="
+                flex: 1;
+                min-width: 280px;
+                background: rgba(30, 35, 25, 0.6);
+                border: 1px solid rgba(140, 180, 100, 0.2);
+                border-top: 3px solid rgba(100, 160, 80, 0.5);
+                border-radius: 6px;
+                padding: 20px;
+                text-align: left;
+                position: relative;
+                box-shadow: inset 0 0 15px rgba(0,0,0,0.4);
+            ">
+                <div style="
+                    font-family: 'Creepster', cursive;
+                    color: #aadd88;
+                    font-size: 1.3rem;
+                    margin-bottom: 8px;
+                    letter-spacing: 2px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                ">
+                    <span style="font-size: 1.5rem;">👁️</span>
+                    深潜模式
+                    <span style="font-size: 0.75rem; color: rgba(200,180,140,0.6); margin-left: auto; letter-spacing: 1px;">DEEP EXPLORATION</span>
+                </div>
+                <p style="
+                    font-family: 'Griffy', cursive;
+                    color: rgba(220, 200, 170, 0.9);
+                    font-size: 0.95rem;
+                    line-height: 1.7;
+                    margin: 0 0 10px 0;
+                ">
+                    当灵感如迷雾中的低语，与古老存在对话以剥离现实的伪装。<br>
+                    <span style="color: #aadd88;">逐步揭开</span>设计的面纱，直至真相足够清晰，方可铸就永恒。
+                </p>
+                <p style="
+                    font-family: 'Griffy', cursive;
+                    color: rgba(180, 160, 130, 0.7);
+                    font-size: 0.8rem;
+                    font-style: italic;
+                    line-height: 1.5;
+                    margin: 0;
+                    border-top: 1px solid rgba(200,220,150,0.1);
+                    padding-top: 8px;
+                ">
+                    When inspiration whispers like mist, converse with ancient beings to peel away reality's disguise. Gradually unveil the design until truth is clear enough to forge eternity.
+                </p>
+                <div style="position: absolute; bottom: -8px; right: -5px; font-size: 18px; opacity: 0.4; filter: grayscale(100%) brightness(0.6);">🌿</div>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
 
 def render_chat(messages):
+    """
+    渲染聊天记录 - 双语标签
+    """
     for msg in messages:
         role = msg.get("role", "user")
         content = msg.get("content", "")
@@ -150,6 +288,9 @@ def render_chat(messages):
 
 
 def render_loading(zh_text="正在生成世界...", en_text="GENERATING WORLD..."):
+    """
+    饥荒风格的加载动画 - 双语
+    """
     loading_html = f"""
     <div style="
         display: flex;
@@ -246,6 +387,9 @@ def render_loading(zh_text="正在生成世界...", en_text="GENERATING WORLD...
 
 
 def render_mode_indicator(zh_mode, en_mode):
+    """
+    显示当前选中的模式 - 双语
+    """
     indicator_html = f"""
     <div style="
         background: linear-gradient(
