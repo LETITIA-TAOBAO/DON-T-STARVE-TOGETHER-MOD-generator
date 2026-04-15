@@ -34,9 +34,9 @@ except Exception as e:
 
 
 # ========================
-# 🎨 主题 CSS - 超强力覆盖白底
+# 🎨 CSS + JavaScript 双重强制透明
 # ========================
-def inject_theme_css(bg_url):
+def inject_theme_css_js(bg_url):
     css = f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
@@ -48,23 +48,24 @@ def inject_theme_css(bg_url):
         --highlight-gold: #FFD700;
         --text-primary: #F5E6C8;
         --border-gold: #A67C3B;
-        --black-bg: rgba(0, 0, 0, 0);
     }}
     
-    /* ===== 核心：强制所有容器透明 ===== */
+    /* ===== 第一层：全局强制 ===== */
     html, body {{
         background-color: transparent !important;
         color: var(--text-primary) !important;
         margin: 0 !important;
         padding: 0 !important;
+        overflow-x: hidden !important;
     }}
     
+    /* ===== 第二层：stApp ===== */
     .stApp, [class*="css"], .st-emotion-cache, [data-testid="stApp"] {{
         background-color: transparent !important;
         background: transparent !important;
     }}
     
-    /* ===== 背景图层 ===== */
+    /* ===== 第三层：背景图层 ===== */
     body::before {{
         content: "" !important;
         position: fixed !important;
@@ -74,32 +75,28 @@ def inject_theme_css(bg_url):
         filter: contrast(1.08) brightness(0.88) !important;
     }}
     
-    /* ===== 隐藏 Streamlit 默认元素 ===== */
-    header, footer, #MainMenu, [data-testid="stHeader"], [data-testid="stDecoration"], [data-testid="stToolbar"] {{
-        display: none !important;
-    }}
-    
-    /* ===== 🔥 关键：对话输入框区域彻底透明（最重要）===== */
-    [data-testid="stChatInput"].stSticky {{
+    /* ===== 第四层：Chat Input深度覆盖（最关键）===== */
+    /* 直接针对底层React组件 */
+    div[data-testid="stChatInput"],
+    div[data-testid="stChatInput"] > div,
+    div[data-testid="stChatInput"] form,
+    div[data-testid="stChatInput"] form > div,
+    div[data-testid="stChatInput"] textarea,
+    div[data-testid="stChatInput"] button,
+    div.stSticky,
+    div.stSticky > div,
+    div.stSticky form,
+    div.stSticky form > div,
+    div.stSticky textarea,
+    div.stSticky button {{
         background-color: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        margin-bottom: 0 !important;
-        padding-bottom: 0 !important;
+        outline: none !important;
     }}
     
-    [data-testid="stChatInput"] > div,
-    [data-testid="stChatInput"] > div > div,
-    [data-testid="stChatInput"] form,
-    [data-testid="stChatInput"] form > div {{
-        background-color: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }}
-    
-    [data-testid="stChatInput"] textarea {{
+    /* 针对文本域 */
+    div[data-testid="stChatInput"] textarea {{
         background-color: rgba(25,20,15,0.98) !important;
         border: 2px solid var(--border-gold) !important;
         color: var(--text-primary) !important;
@@ -109,28 +106,30 @@ def inject_theme_css(bg_url):
         box-shadow: inset 0 0 15px rgba(0,0,0,0.6) !important;
     }}
     
-    [data-testid="stChatInput"] textarea:focus {{
-        outline: none !important;
-        border-color: var(--highlight-gold) !important;
-    }}
-    
-    [data-testid="stChatInput"] button {{
+    /* 针对发送按钮 */
+    div[data-testid="stChatInput"] button {{
         background-color: rgba(25,20,15,0.98) !important;
         border: 2px solid var(--border-gold) !important;
+        color: var(--highlight-gold) !important;
     }}
     
-    /* ===== 块容器透明化 ===== */
+    /* ===== 第五层：块级元素透明 ===== */
     [data-testid="stAppViewContainer"],
     [data-testid="stBlockContainer"],
     [data-testid="stVerticalBlock"],
     [data-testid="stColumn"],
     [data-testid="stMainBlockContainer"],
-    .stMarkdown > div,
-    .stHtml,
-    blockquote, pre, code {{
+    div.block-container,
+    section.st-section {{
         background-color: transparent !important;
         background: transparent !important;
-        box-shadow: none !important;
+        padding: 0 !important;
+    }}
+    
+    /* ===== 第六层：隐藏默认元素 ===== */
+    header, footer, #MainMenu, [data-testid="stHeader"], [data-testid="stDecoration"], 
+    [data-testid="stToolbar"], [data-testid="stSidebarClose"] {{
+        display: none !important;
     }}
     
     /* ===== 侧边栏 ===== */
@@ -152,6 +151,41 @@ def inject_theme_css(bg_url):
     ::-webkit-scrollbar {{ width: 8px !important; }}
     ::-webkit-scrollbar-thumb {{ background: rgba(166,124,59,0.5) !important; }}
     </style>
+    
+    <!-- 🔥 第七层：JavaScript强制清理 -->
+    <script>
+    // 页面加载后立即执行
+    setTimeout(function() {{
+        // 查找所有可能带背景的容器
+        const containers = document.querySelectorAll(
+            'div[data-testid*="stApp"],' +
+            'div[data-testid*="Container"],' +
+            'div.stSticky,' +
+            '[class*="css"],' +
+            '.block-container,' +
+            '.st-emotion-cache'
+        );
+        
+        containers.forEach(el => {{
+            el.style.backgroundColor = 'transparent' + '!important';
+            el.style.background = 'transparent' + '!important';
+        }});
+        
+        // 特别处理聊天输入框
+        const chatInput = document.querySelector('[data-testid="stChatInput"]');
+        if (chatInput) {{
+            chatInput.style.backgroundColor = 'transparent' + '!important';
+            const forms = chatInput.querySelectorAll('form, div');
+            forms.forEach(form => {{
+                form.style.backgroundColor = 'transparent' + '!important';
+                form.style.border = 'none' + '!important';
+                form.style.boxShadow = 'none' + '!important';
+            }});
+        }}
+        
+        console.log('[DEBUG] JavaScript forced transparency applied');
+    }}, 100);
+    </script>
     """
     return css
 
@@ -193,10 +227,34 @@ bg_url = f'data:image/png;base64,{bg_base64}' if bg_base64 else ''
 
 
 # ========================
-# 🎨 注入 CSS (必须最前面)
+# 🎨 注入 CSS + JS (最前面！)
 # ========================
-print("[INIT] Injecting theme CSS...")
-st.markdown(inject_theme_css(bg_url), unsafe_allow_html=True)
+print("[INIT] Injecting theme CSS + JavaScript...")
+st.markdown(inject_theme_css_js(bg_url), unsafe_allow_html=True)
+
+# 🔥 额外JS注入作为备份
+backup_js = """
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    setInterval(function() {
+        const allElements = document.getElementsByTagName('*');
+        for (let el of allElements) {
+            if (el.tagName === 'DIV' || el.tagName === 'SECTION') {
+                const style = window.getComputedStyle(el);
+                if ((style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent') || 
+                    (style.backgroundImage && !style.backgroundImage.includes('linear-gradient'))) {
+                    // 排除已有背景图的元素
+                    if (!el.classList.contains('background-layer')) {
+                        el.style.backgroundColor = 'transparent' + '!important';
+                    }
+                }
+            }
+        }
+    }, 500); // 每500ms检查一次
+});
+</script>
+"""
+st.markdown(backup_js, unsafe_allow_html=True)
 
 
 # ========================
