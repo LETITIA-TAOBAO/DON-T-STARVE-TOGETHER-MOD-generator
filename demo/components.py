@@ -1,238 +1,283 @@
-def inject_theme(bg_base64=None):
-    if bg_base64:
-        bg_image = f'url("data:image/png;base64,{bg_base64}")'
-    else:
-        bg_image = 'url("https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?auto=format&fit=crop&w=2073&q=80")'
+import streamlit as st
+
+
+def render_banner():
+    """渲染顶部 Banner"""
+    st.markdown("""
+    <div style="
+        background: rgba(20, 15, 10, 0.75);
+        border: 3px solid #A67C3B;
+        border-radius: 12px;
+        padding: 40px;
+        text-align: center;
+        max-width: 950px;
+        margin: 20px auto;
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.8), inset 0 0 40px rgba(0, 0, 0, 0.6);
+        position: relative;
+    ">
+        <h1 style="
+            font-family: 'Creepster', cursive;
+            font-size: 3.8rem;
+            margin: 0;
+            color: #ffaa60;
+            text-shadow: 0 0 25px rgba(255, 170, 96, 0.8);
+            letter-spacing: 5px;
+        ">饥荒 MOD 生成器</h1>
+
+        <p style="
+            font-family: 'Griffy', cursive;
+            color: #aa8855;
+            font-size: 1.4rem;
+            letter-spacing: 3px;
+            margin-top: 5px;
+            text-transform: uppercase;
+            text-align: center;
+        ">DON'T STARVE TOGETHER MOD GENERATOR</p>
+
+        <hr style="border: 0; border-top: 2px solid #5a3a1a; width: 50%; margin: 20px auto; opacity: 0.7;">
+
+        <p style="
+            font-family: 'Griffy', cursive;
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: #d4c4a0;
+            max-width: 800px;
+            margin: 0 auto 30px auto;
+            text-shadow: 1px 1px 3px #000;
+            text-align: center;
+        ">
+        当理智的 san 值归零，现实的法则在此崩塌。<br>
+        <span style="color:#88aa66; text-shadow: 0 0 10px rgba(136, 170, 102, 0.5);">You are no longer a survivor, but a Creator of Nightmares.</span><br>
+        你不再是苟延残喘的求生者，而是编织噩梦的造物主。<br>
+        在永恒领域的边缘，用代码重塑你的疯狂。<br>
+        <span style="color:#88aa66; text-shadow: 0 0 10px rgba(136, 170, 102, 0.5);">Weave your madness into the Constant.</span>
+        </p>
+
+        <hr style="border: 0; border-top: 2px solid #5a3a1a; width: 40%; margin: 25px auto; opacity: 0.7;">
+
+        <div style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;">
+            <div style="
+                flex: 1; min-width: 320px;
+                background: rgba(30, 20, 10, 0.7);
+                border: 2px solid #aa7733;
+                padding: 20px;
+                border-radius: 6px;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 0, 0, 0.5);
+            ">
+                <div style="font-family:'Creepster'; color:#ffaa60; font-size:1.7rem; text-align:center;">🔥 快速生成 / RAPID</div>
+                <p style="font-family:'Griffy'; color:#d4c4a0; font-size:0.95rem; margin-top:10px; line-height:1.7;">
+                适用于意志坚定的造物主。<br>当你已明确 Mod 的核心机制与物品属性，无需犹豫，直接将构想铸造成可下载的文件。<br>
+                <span style="color:#888; font-size:0.8em; display:block; margin-top:10px; font-style:italic;">For when your vision is clear. Forge it now.</span>
+                </p>
+            </div>
+
+            <div style="
+                flex: 1; min-width: 320px;
+                background: rgba(20, 30, 20, 0.7);
+                border: 2px solid #668844;
+                padding: 20px;
+                border-radius: 6px;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 0, 0, 0.5);
+            ">
+                <div style="font-family:'Creepster'; color:#aadd88; font-size:1.7rem; text-align:center;">👁️ 探索设计 / EXPLORE</div>
+                <p style="font-family:'Griffy'; color:#d4c4a0; font-size:0.95rem; margin-top:10px; line-height:1.7;">
+                适用于在迷雾中低语的探索者。<br>当灵感混沌不清，与暗影对话以理清思路，在反复试探中让疯狂的蓝图逐渐清晰。<br>
+                <span style="color:#888; font-size:0.8em; display:block; margin-top:10px; font-style:italic;">For when inspiration is foggy. Talk to the Shadow.</span>
+                </p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_chat(messages):
+    """渲染聊天记录"""
+    if not messages:
+        return
     
-    return f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Griffy&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap');
+    for msg in messages:
+        if isinstance(msg, dict):
+            role = msg.get('role', 'user')
+            content = msg.get('content', '')
+            
+            css_class = 'user' if role == 'user' else 'assistant'
+            icon_color = '#FF8C00' if role == 'user' else '#4CAF50'
+            name = '🧙‍️ 求生者 / SURVIVOR' if role == 'user' else '👁️ 暗影 / SHADOW'
+            
+            st.markdown(f"""
+            <div class='chat-box {css_class}' style='
+                background: rgba(25, 20, 15, 0.9);
+                border-left: 4px solid {icon_color} !important;
+                padding: 15px 20px;
+                margin: 15px 0;
+                border-radius: 8px;
+                color: #F5E6C8;
+                font-family: 'IM Fell English SC', serif !important;
+                box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6);
+                max-width: 95%;
+            '>
+                <b style="font-family:'Creepster'; font-size:1.2rem; color:{icon_color}; display:block; margin-bottom:8px; text-shadow: 0 0 8px {icon_color};">
+                    {name}
+                </b>
+                <div style="font-size:1.1rem; line-height:1.7;">{content}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class='chat-box' style='
+                background: rgba(25, 20, 15, 0.9);
+                padding: 15px 20px;
+                margin: 15px 0;
+                border-radius: 8px;
+                color: #F5E6C8;
+                font-family: 'IM Fell English SC', serif !important;
+                box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6);
+            '>
+                {msg}
+            </div>
+            """, unsafe_allow_html=True)
 
-    :root {{
-        --thorn-color: #8B4513;
-        --dark-bg: rgba(15, 10, 5, 0.85);
-        --light-bg: rgba(25, 20, 10, 0.80);
-        --highlight: #FFD700;
-        --text-primary: #F5E6C8;
-        --text-secondary: #D4C4A0;
-        --border-color: #A67C3B;
-    }}
 
-    .stApp {{
-        background:
-            linear-gradient(rgba(10, 6, 3, 0.75), rgba(8, 4, 2, 0.95)),
-            {bg_image};
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-        color: var(--text-primary);
-        font-family: 'IM Fell English SC', serif !important;
-    }}
+def render_loading():
+    """渲染加载动画"""
+    st.markdown("""
+    <div style="text-align: center; padding: 40px; margin: 30px 0;">
+        <div style="
+            font-family: 'Creepster', cursive;
+            font-size: 2.5rem;
+            color: #FFD700;
+            text-align: center;
+            animation: flicker 1.5s infinite alternate;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+        ">世界正在扭曲......<br>REALITY IS WARPING...</div>
 
-    /* 背景纹理叠加 */
-    .stApp::before {{
-        content: "";
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.05) 10px, rgba(0,0,0,0.05) 20px);
-        pointer-events: none; z-index: 0;
-    }}
+        <div style="
+            font-family: 'IM Fell English SC';
+            font-size: 1.2rem;
+            color: #aa8855;
+            margin-top: 20px;
+            animation: float 3s ease-in-out infinite;
+        ">
+            暗影正在编织你的疯狂......<br>The shadows are weaving your madness...
+        </div>
 
-    /* 隐藏 Streamlit 默认元素 */
-    header, #MainMenu, footer, [data-testid="stHeader"] {{
-        display: none !important;
-    }}
+        <style>
+        @keyframes flicker {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        </style>
+    </div>
+    """, unsafe_allow_html=True)
 
-    [data-testid="stAppViewContainer"] {{
-        background-color: transparent !important;
-        padding-top: 20px !important;
-        position: relative; z-index: 1;
-    }}
 
-    /* ===== ⚠️ 关键修复：对话框强制深色背景 ===== */
-    [data-testid="stChatInput"] {{
-        background-color: transparent !important;
-        border: none !important;
-        padding: 0 !important;
-        margin-top: 20px !important;
-    }}
+def render_mode_confirmation(mode):
+    """渲染模式确认动画"""
+    mode_config = {
+        "rapid": ("⚡", "#FFD700", "**快速生成模式已激活!**\\nRAPID GENERATION ACTIVATED!"),
+        "explore": ("👁️", "#4CAF50", "**探索设计模式已激活!**\\nDEEP EXPLORATION ACTIVATED!"),
+        "generating": ("⚙️", "#FF8C00", "**正在重构现实...**\\nREALITY REWRITING IN PROGRESS..."),
+        "generated": ("✅", "#66aa66", "**Mod 已完成!**\\nMOD COMPLETED!")
+    }
+    
+    config = mode_config.get(mode, ("❓", "#888", "**未知模式**"))
+    icon, color, text = config
+    
+    st.markdown(f"""
+    <div style="
+        color: {color};
+        font-family: 'Creepster', cursive;
+        font-size: 2rem;
+        text-align: center;
+        margin: 20px 0;
+        padding: 15px 30px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 6px;
+        border: 2px dashed {color};
+        box-shadow: 0 0 20px {color};
+        animation: pulse 1.5s infinite;
+    ">{icon} {text}</div>
+    """, unsafe_allow_html=True)
 
-    [data-testid="stChatInput"] > div,
-    [data-testid="stChatInput"] textarea {{
-        background-color: rgba(25, 20, 15, 0.95) !important;
-        color: var(--text-primary) !important;
-        font-family: 'IM Fell English SC', serif !important;
-        font-size: 16px !important;
-        border: 2px solid var(--border-color) !important;
-        border-radius: 8px !important;
-        padding: 15px !important;
-        min-height: 80px !important;
-        box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6) !important;
-    }}
 
-    [data-testid="stChatInput"] textarea:focus {{
-        outline: none !important;
-        border-color: #FFD700 !important;
-        box-shadow: 0 0 20px rgba(255, 215, 0, 0.3) !important;
-    }}
+def render_mod_history(mods):
+    """渲染侧边栏 Mod 历史记录"""
+    if not mods:
+        st.markdown("""
+        <div style="
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px dashed #A67C3B;
+            border-radius: 6px;
+            padding: 20px;
+            text-align: center;
+        ">
+            <p style="font-family:'IM Fell English SC'; color:#888; font-size:0.9rem;">No Mods Created Yet<br>暂无创作的 Mod</p>
+        </div>
+        """, unsafe_allow_html=True)
+        return
+    
+    st.markdown("<h4 style='font-family:Griffy; color:#AA7733; margin-bottom:15px;'>📜 创作记录 / CREATIONS</h4>", unsafe_allow_html=True)
+    
+    for mod in mods:
+        with st.container():
+            st.markdown(f"""
+            <div style="
+                background: rgba(30, 20, 10, 0.7);
+                border: 1px solid #A67C3B;
+                border-radius: 6px;
+                padding: 12px;
+                margin-bottom: 10px;
+                box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            ">
+                <div style="font-family:'Creepster'; color:#FFD700; font-size:1.1rem;">{mod['name']}</div>
+                <div style="font-family:'IM Fell English SC'; color:#888; font-size:0.8rem; margin-top:5px;">
+                    {mod['date']} • {mod.get('status', 'ready')}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-    /* ===== 按钮荆棘效果 ===== */
-    div[data-testid="stButton"] > button {{
-        font-family: 'Creepster', cursive !important;
-        font-size: 20px !important;
-        font-weight: bold !important;
-        letter-spacing: 2px !important;
-        line-height: 1.3 !important;
-        padding: 20px 15px !important;
-        background: linear-gradient(180deg, #3A2E1D, #1A120B) !important;
-        color: var(--highlight) !important;
-        border: 3px solid var(--border-color) !important;
-        border-radius: 0 !important;
-        box-shadow: 0 0 15px rgba(255, 170, 96, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.7) !important;
-        transition: all 0.3s ease !important;
-        text-align: center !important;
-        min-height: 80px !important;
-    }}
 
-    div[data-testid="stButton"] > button:before {{
-        content: "✦  ";
-        position: absolute;
-        top: 5px; left: 5px; right: 5px;
-        color: rgba(139, 69, 19, 0.5);
-        font-size: 18px; letter-spacing: 10px;
-        pointer-events: none; z-index: -1;
-    }}
+def render_download_section(mod):
+    """渲染下载区域"""
+    if not mod:
+        return
+    
+    st.markdown("---")
+    st.markdown(f"""
+    <div style="
+        background: rgba(30, 20, 10, 0.8);
+        border: 2px solid #FFD700;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+    ">
+        <h4 style="font-family:'Creepster'; color:#FFD700; margin-top:0;">⬇️ 下载 Mod</h4>
+        <p style="font-family:'IM Fell English SC'; color:#D4C4A0; font-size:0.9rem;">Download Your Creation</p>
+        <div style="font-size:0.9rem; color:#aaa; margin-bottom:15px;">{mod.get('desc', '无描述')}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("💾 立即下载", key=f"download_{mod['id']}", use_container_width=True):
+            st.success(f"✅ {mod['name']} 已开始下载!")
+    with col2:
+        if st.button("🔄 重新生成", key=f"regen_{mod['id']}", use_container_width=True):
+            st.info("正在重新生成该 Mod...")
 
-    div[data-testid="stButton"] > button:hover {{
-        transform: scale(1.05) !important;
-        box-shadow: 0 0 30px rgba(255, 170, 96, 0.5) !important;
-        color: #FFF !important;
-        border-color: #FFD700 !important;
-    }}
 
-    /* ===== 容器荆棘框 ===== */
-    .thorn-container {{
-        background: rgba(20, 15, 10, 0.75) !important;
-        border: 3px solid var(--border-color) !important;
-        padding: 30px !important;
-        margin: 20px auto !important;
-        max-width: 1000px !important;
-        box-shadow: 0 0 50px rgba(0, 0, 0, 0.8), inset 0 0 40px rgba(0, 0, 0, 0.6) !important;
-        position: relative !important;
-    }}
-
-    .thorn-container::before,
-    .thorn-container::after {{
-        content: "";
-        position: absolute;
-        width: 80px; height: 80px;
-        border: 2px solid var(--thorn-color);
-    }}
-
-    .thorn-container::before {{
-        top: 10px; left: 10px;
-        border-right: none; border-bottom: none;
-        border-radius: 8px 0 0 0;
-    }}
-
-    .thorn-container::after {{
-        bottom: 10px; right: 10px;
-        border-left: none; border-top: none;
-        border-radius: 0 0 8px 0;
-    }}
-
-    /* ===== 标题和文本 ===== */
-    h1, h2, h3 {{
-        font-family: 'Creepster', cursive !important;
-        color: var(--highlight) !important;
-        text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.3) !important;
-    }}
-
-    h1 {{ font-size: 3.5rem !important; letter-spacing: 4px !important; }}
-    p, span, label {{
-        font-family: 'IM Fell English SC', serif !important;
-        color: var(--text-secondary) !important;
-    }}
-
-    /* ===== 聊天消息框 ===== */
-    .chat-box {{
-        background: rgba(25, 20, 15, 0.9) !important;
-        border-left: 4px solid var(--highlight) !important;
-        padding: 15px 20px !important;
-        margin: 15px 0 !important;
-        border-radius: 8px !important;
-        color: var(--text-primary) !important;
-        font-family: 'IM Fell English SC', serif !important;
-        box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6) !important;
-        max-width: 95% !important;
-    }}
-
-    .chat-box.user {{ border-left-color: #FF8C00 !important; }}
-    .chat-box.assistant {{ border-left-color: #4CAF50 !important; }}
-
-    /* ===== 加载文字 ===== */
-    .loading-text {{
-        font-family: 'Creepster', cursive !important;
-        font-size: 2.5rem !important;
-        color: var(--highlight) !important;
-        text-align: center !important;
-        margin: 40px 0 !important;
-        animation: flicker 1.5s infinite alternate !important;
-    }}
-
-    @keyframes flicker {{
-        0% {{ opacity: 0.7; }}
-        50% {{ opacity: 1; }}
-        100% {{ opacity: 0.8; }}
-    }}
-
-    /* ===== 模式确认 ===== */
-    .mode-confirmation {{
-        font-family: 'Creepster', cursive !important;
-        font-size: 2rem !important;
-        text-align: center !important;
-        margin: 20px 0 !important;
-        animation: pulse 1.5s infinite !important;
-    }}
-
-    @keyframes pulse {{
-        0% {{ transform: scale(1); }}
-        50% {{ transform: scale(1.05); }}
-        100% {{ transform: scale(1); }}
-    }}
-
-    /* ===== 侧边栏 ===== */
-    section[data-testid="stSidebar"] {{
-        background: rgba(15, 10, 5, 0.95) !important;
-        border-right: 2px solid var(--border-color) !important;
-    }}
-
-    section[data-testid="stSidebar"] * {{ color: var(--text-secondary) !important; }}
-
-    /* ===== 滚动条 ===== */
-    ::-webkit-scrollbar {{ width: 8px !important; }}
-    ::-webkit-scrollbar-track {{ background: rgba(10, 6, 3, 0.8) !important; }}
-    ::-webkit-scrollbar-thumb {{
-        background: rgba(166, 124, 59, 0.4) !important;
-        border-radius: 4px !important;
-    }}
-
-    /* ===== 信息卡片 ===== */
-    .info-card {{
-        background: rgba(30, 20, 10, 0.7) !important;
-        border: 2px solid var(--thorn-color) !important;
-        padding: 20px !important;
-        border-radius: 6px !important;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 0, 0, 0.5) !important;
-    }}
-
-    .info-card-title {{
-        font-family: 'Creepster', cursive !important;
-        color: var(--highlight) !important;
-        font-size: 1.3rem !important;
-        margin-bottom: 10px !important;
-    }}
-    </style>
-    """
+# 修复：确保所有函数都被导出
+__all__ = [
+    'render_banner',
+    'render_chat',
+    'render_loading',
+    'render_mode_confirmation',
+    'render_mod_history',
+    'render_download_section'
+]
