@@ -1,69 +1,107 @@
-import streamlit as st
-import base64
-import os
-from theme import inject_theme
-from components import render_banner, render_chat, render_loading
+def inject_theme(bg_base64=None):
 
-st.set_page_config(layout="wide")
+    if bg_base64:
+        bg = f'url("data:image/png;base64,{bg_base64}")'
+    else:
+        bg = "url('https://images.unsplash.com/photo-1526779259212-756e0cf4b0b8')"
 
-# ===== 背景图读取 =====
-def get_base64(path):
-    if os.path.exists(path):
-        with open(path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    return None
+    return f"""
+    <style>
 
-bg_base64 = get_base64("背景图.png")
+    @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Griffy&display=swap');
 
-st.markdown(inject_theme(bg_base64), unsafe_allow_html=True)
+    .stApp {{
+        background:
+            linear-gradient(rgba(10,8,5,0.15), rgba(5,4,2,0.4)),
+            {bg};
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        color: #f5e6c8;
+        font-family: 'Griffy', cursive;
+    }}
 
-# ===== session =====
-if "mode" not in st.session_state:
-    st.session_state.mode = None
+    header, #MainMenu, footer {{
+        display: none !important;
+    }}
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+    /* ===== 荆棘按钮 ===== */
+    div[data-testid="stButton"] > button {{
+        font-family: 'Creepster', cursive !important;
+        font-size: 26px !important;
+        font-weight: bold !important;
+        letter-spacing: 4px !important;
+        padding: 20px !important;
+        background: linear-gradient(180deg,#7a4f2b,#2a1a0c) !important;
+        color: #ffd280 !important;
+        border: 3px solid #a67c3b !important;
+        border-radius: 8px !important;
 
-# ===== UI =====
-render_banner()
+        box-shadow:
+            0 0 25px rgba(255,140,0,0.4),
+            inset 0 0 20px rgba(0,0,0,0.7);
 
-col1, col2 = st.columns(2)
+        position: relative;
+        overflow: hidden;
+    }}
 
-# ===== 按钮（带状态高亮）=====
-with col1:
-    if st.button("快速生成\nRAPID"):
-        st.session_state.mode = "rapid"
+    div[data-testid="stButton"] > button:hover {{
+        transform: scale(1.1) rotate(-1deg);
+        box-shadow: 0 0 50px rgba(255,140,0,0.8);
+    }}
 
-with col2:
-    if st.button("探索设计\nEXPLORE"):
-        st.session_state.mode = "explore"
+    /* ===== 模式提示 ===== */
+    .mode-box {{
+        margin:20px auto;
+        padding:15px;
+        text-align:center;
+        border:2px solid #a67c3b;
+        background:rgba(20,16,10,0.85);
+        font-family:Creepster;
+        font-size:1.5rem;
+        animation:fadeIn 0.5s ease;
+    }}
 
-# ===== 模式反馈（强化+动画）=====
-if st.session_state.mode == "rapid":
-    st.markdown("""
-    <div class="mode-box active">
-    ⚡ 快速生成模式已激活<br>
-    <span>RAPID GENERATION MODE ENGAGED</span>
-    </div>
-    """, unsafe_allow_html=True)
+    .mode-box span {{
+        font-family:Griffy;
+        font-size:0.9rem;
+        color:#aa8855;
+    }}
 
-elif st.session_state.mode == "explore":
-    st.markdown("""
-    <div class="mode-box explore">
-    👁️ 探索设计模式已激活<br>
-    <span>DEEP EXPLORATION MODE ENGAGED</span>
-    </div>
-    """, unsafe_allow_html=True)
+    .mode-box.explore {{
+        border-color:#88aa66;
+    }}
 
-# ===== 输入 =====
-user_input = st.chat_input("输入你的疯狂构想 / Enter your idea")
+    @keyframes fadeIn {{
+        from {{opacity:0; transform:translateY(10px)}}
+        to {{opacity:1; transform:translateY(0)}}
+    }}
 
-if user_input:
-    st.session_state.messages.append(user_input)
+    /* ===== 输入框修复（白色BUG）===== */
+    textarea, textarea:focus {{
+        background-color: rgba(25,20,12,0.95) !important;
+        color: #f5e6c8 !important;
+        border: 1px solid #6b4a2a !important;
+    }}
 
-    with st.spinner(""):
-        render_loading()
+    [data-testid="stChatInput"] textarea {{
+        background-color: rgba(25,20,12,0.95) !important;
+    }}
 
-    st.session_state.messages.append("👁️ 暗影回应了你的召唤……")
+    /* ===== 聊天框 ===== */
+    .chat-box {{
+        background: rgba(25,20,12,0.85);
+        border-left: 5px solid #88aa55;
+        padding: 14px;
+        margin: 12px 0;
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.7);
+    }}
 
-render_chat(st.session_state.messages)
+    h1,h2,h3 {{
+        font-family: 'Creepster', cursive !important;
+        color: #ffd280 !important;
+    }}
+
+    </style>
+    """
