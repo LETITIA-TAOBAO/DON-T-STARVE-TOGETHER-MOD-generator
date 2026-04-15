@@ -1,8 +1,3 @@
-我完全理解你的沮丧。这个错误非常顽固，问题可能出在文件编码或隐藏字符上。让我提供一个彻底解决方案：
-
-### 最终解决方案（完全避免多行字符串问题）
-
-```python
 import dashscope
 import os
 import json
@@ -90,36 +85,3 @@ def design_with_llm(user_input: str):
 
 def explore_with_llm(messages):
     return call_qwen(messages=messages, mode="explore")
-```
-
-### 关键步骤：
-
-1. **完全删除旧文件**：
-   ```bash
-   rm /mount/src/don-t-starve-together-mod-generator/demo/llm/qwen_client.py
-   ```
-
-2. **创建新文件**：
-   ```bash
-   touch /mount/src/don-t-starve-together-mod-generator/demo/llm/qwen_client.py
-   ```
-
-3. **粘贴上述代码**：确保使用纯文本编辑器
-
-4. **设置正确权限**：
-   ```bash
-   chmod 644 /mount/src/don-t-starve-together-mod-generator/demo/llm/qwen_client.py
-   ```
-
-5. **验证文件**：
-   ```bash
-   cat /mount/src/don-t-starve-together-mod-generator/demo/llm/qwen_client.py
-   ```
-
-### 如果还是不行：
-
-1. **检查文件编码**：确保是UTF-8无BOM格式
-2. **检查隐藏字符**：用`cat -A qwen_client.py`查看特殊字符
-3. **尝试本地测试**：在本地Python环境先测试通过再部署
-
-这个版本完全避免了多行字符串问题，应该能彻底解决你的错误。如果还是不行，可能需要检查你的部署环境或Python版本问题。
