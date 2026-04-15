@@ -6,42 +6,58 @@ st.set_page_config(layout="wide")
 
 st.markdown(inject_theme(), unsafe_allow_html=True)
 
-# session
+# ===== session =====
 if "mode" not in st.session_state:
     st.session_state.mode = None
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# UI
+# ===== UI =====
 render_banner()
 
 col1, col2 = st.columns(2)
 
 with col1:
-    if st.button("快速生成\nRAPID"):
+    if st.button("快速生成\nRAPID GENERATION"):
         st.session_state.mode = "rapid"
 
 with col2:
-    if st.button("探索设计\nEXPLORE"):
+    if st.button("探索设计\nDEEP EXPLORATION"):
         st.session_state.mode = "explore"
 
-# ===== 模式反馈（强化） =====
+# ===== 模式动态反馈 =====
 if st.session_state.mode == "rapid":
-    st.markdown("### ⚡ 当前模式：快速生成 / RAPID GENERATION")
+    st.markdown("""
+    <div class="mode-box">
+    ⚡ 当前模式：快速生成<br>
+    <span>RAPID GENERATION MODE ACTIVE</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 elif st.session_state.mode == "explore":
-    st.markdown("### 👁️ 当前模式：探索设计 / DEEP EXPLORATION")
+    st.markdown("""
+    <div class="mode-box green">
+    👁️ 当前模式：探索设计<br>
+    <span>EXPLORATION MODE ACTIVE</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ===== 输入 =====
-user_input = st.chat_input("输入你的疯狂构想 / Enter your idea")
+user_input = st.chat_input("输入你的疯狂构想 / Enter your forbidden idea")
 
 if user_input:
-    st.session_state.messages.append(user_input)
+    st.session_state.messages.append({
+        "role": "user",
+        "content": user_input
+    })
 
-    with st.spinner("世界正在变化..."):
+    with st.spinner(""):
         render_loading()
 
-    st.session_state.messages.append("👁️ 暗影回应了你的召唤……")
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": "👁️ 暗影低语：你的世界正在成形…… / The shadows whisper: your world takes form..."
+    })
 
 render_chat(st.session_state.messages)
