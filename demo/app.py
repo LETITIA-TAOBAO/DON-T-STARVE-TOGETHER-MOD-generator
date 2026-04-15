@@ -9,9 +9,9 @@ from datetime import datetime
 try:
     from qwen_client import design_with_llm, explore_with_llm
 except Exception as e:
-    st.error(f"⚠️ LLM 模块加载失败，请确保 qwen_client.py 存在")
-    st.error(f"错误详情：{str(e)}")
-    # 降级模式：模拟 LLM 回复用于测试
+    print(f"⚠️ LLM 模块加载失败：{str(e)}")
+    print("使用降级模式（模拟回复）")
+    
     def mock_explore(messages):
         return {
             "text": "👁️ 暗影在倾听...\n请告诉我更多关于你的想法。\n(Sounds echoing... Tell me more of your vision.)",
@@ -39,13 +39,24 @@ except Exception as e:
     explore_with_llm = mock_explore
 
 # ========================
-# 2. 导入 UI 组件
+# ✅ 导入 UI 组件
 # ========================
-from theme import inject_theme
-from components import render_banner, render_chat, render_loading, render_mode_confirmation, render_mod_history, render_download_section
+try:
+    from theme import inject_theme
+    from components import (
+        render_banner, 
+        render_chat, 
+        render_loading, 
+        render_mode_confirmation,
+        render_mod_history, 
+        render_download_section
+    )
+except Exception as e:
+    st.error(f"⚠️ 组件模块加载失败：{str(e)}")
+    st.stop()
 
 # ========================
-# 3. 页面配置
+# 页面配置
 # ========================
 st.set_page_config(
     page_title="AI 饥荒 Mod 生成器",
@@ -54,7 +65,7 @@ st.set_page_config(
 )
 
 # ========================
-# 4. 背景图处理
+# 背景图处理
 # ========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 bg_path = os.path.join(BASE_DIR, "背景图.png")
@@ -62,7 +73,7 @@ bg_path = os.path.join(BASE_DIR, "背景图.png")
 def get_base64_image(path):
     try:
         if not os.path.exists(path):
-            print(f"❌ 背景图未找到：{path}")
+            print(f"ℹ️ 背景图未找到：{path}，使用默认网络图片")
             return None
         with open(path, "rb") as f:
             return base64.b64encode(f.read()).decode()
@@ -73,20 +84,20 @@ def get_base64_image(path):
 bg_base64 = get_base64_image(bg_path)
 
 # ========================
-# 5. 注入主题
+# 注入主题
 # ========================
 if bg_base64:
     print(f"✅ 背景图加载成功 ({len(bg_base64)}字符)")
-    st.markdown(inject_theme(bg_base64), unsafe_allow_html=True)
 else:
     print("⚠️ 使用默认背景")
-    st.markdown(inject_theme(None), unsafe_allow_html=True)
+
+st.markdown(inject_theme(bg_base64), unsafe_allow_html=True)
 
 # ========================
-# 6. Session State 初始化
+# Session State 初始化
 # ========================
 if "mode" not in st.session_state:
-    st.session_state.mode = "home"  # home / rapid / explore / generating / generated
+    st.session_state.mode = "home"
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -94,38 +105,37 @@ if "messages" not in st.session_state:
 if "generated_mods" not in st.session_state:
     st.session_state.generated_mods = []
 
-if "show_loading" not in st.session_state:
-    st.session_state.show_loading = False
+if "final_prompt" not in st.session_state:
+    st.session_state.final_prompt = ""
 
 # ========================
-# 7. 主界面渲染
+# 主界面渲染
 # ========================
 render_banner()
 
-# 模式选择区域
+# 模式选择按钮
 col1, col2 = st.columns([1, 1], gap="large")
 
 with col1:
-    if st.button("**🔥 快速生成**\nRAPID GENERATION", key="rapid_btn", use_container_width=True):
+    if st.button("**🔥 快速生成**\\nRAPID GENERATION", key="rapid_btn", use_container_width=True):
         st.session_state.mode = "rapid"
         st.session_state.messages = []
         st.rerun()
 
 with col2:
-    if st.button("**👁️ 探索设计**\nDEEP EXPLORATION", key="explore_btn", use_container_width=True):
+    if st.button("**👁️ 探索设计**\\nDEEP EXPLORATION", key="explore_btn", use_container_width=True):
         st.session_state.mode = "explore"
         st.session_state.messages = []
         st.rerun()
 
-# 模式确认动画
+# 模式确认
 if st.session_state.mode != "home":
     render_mode_confirmation(st.session_state.mode)
 
 # ========================
-# 8. 各模式处理逻辑
+# 各模式处理逻辑
 # ========================
 if st.session_state.mode == "rapid":
-    # ========== 快速生成模式 ==========
     user_input = st.chat_input("输入你的完整 Mod 构想 / Enter your complete concept...")
     
     if user_input:
@@ -134,7 +144,6 @@ if st.session_state.mode == "rapid":
         st.rerun()
 
 elif st.session_state.mode == "explore":
-    # ========== 探索设计模式 ==========
     st.markdown("""
     <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px dashed #A67C3B;">
         💬 与暗影进行多轮对话，逐步明确你的 Mod 设计思路。完成后点击右侧按钮生成最终方案。
@@ -147,8 +156,9 @@ elif st.session_state.mode == "explore":
     if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
         
-        # 显示加载动画
-        st.session_state.show_loading = True
+        # 模拟 AI 回复（实际替换为 API 调用）
+        reply_text = "👁️ 暗影回应了你的召唤...\n让我们共同探索这个疯狂的世界。\n(The shadows respond... Let's explore this mad world together.)"
+        st.session_state.messages.append({"role": "assistant", "content": reply_text})
         st.rerun()
     
     # 完成生成的按钮
@@ -156,19 +166,19 @@ elif st.session_state.mode == "explore":
         col1, col2 = st.columns([3, 1])
         with col2:
             if st.button("✨ 生成最终 Mod", key="gen_from_explore", use_container_width=True):
-                summary = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages[-6:]])
+                summary = "\\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages[-6:]])
                 st.session_state.final_prompt = summary
                 st.session_state.mode = "generating"
                 st.rerun()
 
 # ========================
-# 9. 生成阶段
+# 生成阶段
 # ========================
 if st.session_state.mode == "generating":
     render_loading()
     
     import time
-    time.sleep(2.5)  # 模拟 AI 生成延迟
+    time.sleep(2)  # 模拟生成延迟
     
     # 调用真正的 LLM 函数
     try:
@@ -196,11 +206,10 @@ if st.session_state.mode == "generating":
         "content": result.get('text', '生成完成')
     })
     st.session_state.mode = "generated"
-    st.session_state.show_loading = False
     st.rerun()
 
 # ========================
-# 10. 结果展示
+# 结果展示
 # ========================
 if st.session_state.mode == "generated":
     if st.session_state.messages:
@@ -214,21 +223,9 @@ if st.session_state.mode == "generated":
             st.rerun()
     
     st.divider()
-    st.markdown("""
-    <div style="
-        background: rgba(30, 20, 10, 0.8);
-        border: 2px solid #FFD700;
-        border-radius: 8px;
-        padding: 15px;
-        margin: 20px 0;
-    ">
-        <h4 style="font-family:'Creepster'; color:#FFD700; margin-top:0;">⬇️ 下载你的 Mod</h4>
-        <p style="font-family:'IM Fell English SC'; color:#D4C4A0; font-size:0.9rem;">Download Your Creation</p>
-    </div>
-    """, unsafe_allow_html=True)
 
 # ========================
-# 11. 侧边栏：历史对话 & Mod 库
+# 侧边栏：历史对话 & Mod 库
 # ========================
 with st.sidebar:
     st.markdown("""
@@ -245,30 +242,18 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    # 显示历史记录
     render_mod_history(st.session_state.generated_mods)
     
     st.divider()
     
-    # 显示当前会话消息数
     st.write(f"💬 本次对话：{len(st.session_state.messages)} 条")
     
-    if st.session_state.messages:
-        render_download_section(st.session_state.generated_mods[-1] if st.session_state.generated_mods else None)
+    if st.session_state.generated_mods:
+        render_download_section(st.session_state.generated_mods[-1])
     
     st.divider()
+    
     if st.button("🗑️ 清除全部记录", key="clear_all"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
-
-# ========================
-# 12. Debug信息（可选）
-# ========================
-if 'debug_mode' in st.query_params:
-    with st.expander("🔍 DEBUG"):
-        st.json({
-            "mode": st.session_state.mode,
-            "messages_count": len(st.session_state.messages),
-            "mods_count": len(st.session_state.generated_mods),
-        })
