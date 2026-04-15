@@ -11,21 +11,20 @@ import base64
 dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
 
 # =========================
-# 🖼️ 背景图处理（关键！）
+# 🖼️ 读取本地图片（必须放项目目录）
 # =========================
 def get_base64_image(image_path):
-    with open(image_path, "rb") as f:
-        return base64.b64encode(f.read()).decode()
+    try:
+        with open(image_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except:
+        return ""
 
-# ⚠️ 本地路径（你自己的）
-IMAGE_PATH = "封面图.png"  # 👉 建议把图片放到项目目录！
-
-bg_base64 = ""
-if os.path.exists(IMAGE_PATH):
-    bg_base64 = get_base64_image(IMAGE_PATH)
+IMAGE_PATH = "封面图.png"  # 👉 把图片放到和 app.py 同一目录
+bg_base64 = get_base64_image(IMAGE_PATH)
 
 # =========================
-# 🎨 页面样式（核心UI优化）
+# 🎨 页面配置 + 样式
 # =========================
 st.set_page_config(page_title="DST Mod Designer", layout="wide")
 
@@ -52,13 +51,13 @@ st.markdown(f"""
     z-index: -1;
 }}
 
-/* 遮罩 */
+/* 黑色遮罩 */
 .stApp::after {{
     content: "";
     position: fixed;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.75);
     z-index: -1;
 }}
 
@@ -68,48 +67,43 @@ section[data-testid="stSidebar"] {{
 }}
 
 /* 输入框 */
-.stTextInput input {{
-    background-color: #1a1a1a;
-    color: white;
-    border: 1px solid #444;
+.stChatInput input {{
+    background-color: #1a1a1a !important;
+    color: white !important;
+    border: 1px solid #444 !important;
 }}
 
-/* 按钮 */
-.stButton button {{
-    background-color: #2b2b2b;
-    color: white;
-    border-radius: 8px;
-    border: 1px solid #555;
-}}
-
-.stButton button:hover {{
-    background-color: #444;
-}}
-
-/* 卡片 */
-.block-container {{
-    background: rgba(0,0,0,0.6);
-    padding: 2rem;
-    border-radius: 16px;
+/* 聊天气泡 */
+[data-testid="stChatMessage"] {{
+    background: rgba(20,20,20,0.7);
+    border-radius: 12px;
+    padding: 10px;
 }}
 
 </style>
 """, unsafe_allow_html=True)
 
 # =========================
-# 🧠 Prompt（保留你原逻辑）
+# 🧠 Prompt（保持你原逻辑）
 # =========================
 SYSTEM_PROMPT = """
 你是一个Don't Starve Together Mod设计师。
 
-用自然语言和用户交流。
+输出要求：
+1. 用自然语言和用户交流（像设计师）
+2. 结构清晰，有段落
+3. 最后附带一个JSON结构
 
-最后附带JSON：
+JSON格式如下：
 {
   "concept": "...",
   "mechanics": ["...", "..."],
   "code_hint": "..."
 }
+
+注意：
+- JSON必须在最后
+- JSON之外必须是自然语言
 """
 
 # =========================
@@ -128,7 +122,7 @@ def clean_text(text):
     return re.sub(r"\{.*\}", "", text, flags=re.DOTALL).strip()
 
 # =========================
-# 🚀 LLM调用（直接内置，不再import）
+# 🚀 LLM调用
 # =========================
 def call_qwen(messages):
     try:
@@ -137,6 +131,9 @@ def call_qwen(messages):
             messages=messages,
             result_format="message"
         )
+
+        if response is None:
+            return {"text": "❌ 模型无返回", "json": None, "raw": None}
 
         content = response.output.choices[0].message.content
 
@@ -158,34 +155,50 @@ def call_qwen(messages):
 # =========================
 st.title("🔥 Don't Starve Together · Mod Designer")
 
+# 初始化历史
 if "history" not in st.session_state:
     st.session_state.history = []
 
-user_input = st.text_input("👉 输入你的Mod想法：")
+# =========================
+# 💬 显示历史（关键修复）
+# =========================
+for msg in st.session_state.history:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-if st.button("生成") and user_input:
+# =========================
+# 🧠 输入
+# =========================
+user_input = st.chat_input("👉 输入你的Mod想法")
 
+if user_input:
+
+    # 显示用户消息
+    st.session_state.history.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    # 构建 messages
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-
     for h in st.session_state.history:
         messages.append(h)
 
-    messages.append({"role": "user", "content": user_input})
-
+    # 调用AI
     result = call_qwen(messages)
 
-    # 显示
-    st.markdown("### 🧠 AI设计师")
-    st.markdown(result["text"])
+    # 显示AI回复
+    with st.chat_message("assistant"):
+        st.markdown(result["text"])
 
-    # JSON
-    with st.expander("⚙️ 结构化数据"):
-        if result["json"]:
-            st.json(result["json"])
-        else:
-            st.error("JSON解析失败")
-            st.code(result["raw"])
+        with st.expander("⚙️ 结构化数据（用于生成Mod）"):
+            if result["json"]:
+                st.json(result["json"])
+            else:
+                st.error("JSON解析失败")
+                st.code(result["raw"])
 
-    # 存历史
-    st.session_state.history.append({"role": "user", "content": user_input})
-    st.session_state.history.append({"role": "assistant", "content": result["text"]})
+    # 存储AI回复
+    st.session_state.history.append({
+        "role": "assistant",
+        "content": result["text"]
+    })
