@@ -1,3 +1,72 @@
+Skip to content
+LETITIA-TAOBAO
+DON-T-STARVE-TOGETHER-MOD-generator
+Repository navigation
+Code
+Issues
+Pull requests
+Agents
+Actions
+Projects
+Wiki
+Security and quality
+Insights
+Settings
+DON-T-STARVE-TOGETHER-MOD-generator/demo/llm
+/
+qwen_client.py
+in
+main
+
+Edit
+
+Preview
+Indent mode
+
+Spaces
+Indent size
+
+2
+Line wrap mode
+
+No wrap
+Editing qwen_client.py file contents
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
 import dashscope
 import os
 import json
@@ -34,149 +103,5 @@ EXPLORATION_PROMPT = """
 - 物品/装备类（Item）
 - 机制类（Mechanic）
 - UI/体验类（UI/UX）
-- 综合玩法（Mixed）
-
-并用一句话“复述 + 轻微扩展”用户的想法（不要改写太多）。
-
-## 步骤二：补全核心设计维度（选择2-3个关键点追问）
-根据Mod类型，从以下维度中选择最关键的2-3个进行提问（不要一次问太多）：
-
-通用维度：
-- 核心玩法（这个Mod最有趣的点是什么？）
-- 风格氛围（偏恐怖 / 搞笑 / 克苏鲁 / 科雷原版风格？）
-- 复杂度（轻量增强 / 中型内容 / 大型系统）
-
-Boss/生物类优先问：
-- 行为机制（怎么攻击？有什么特殊机制？）
-- 刷新/触发方式（自然出现 or 召唤）
-- 是否有阶段变化（类似季节/血量/时间）
-
-角色类优先问：
-- 核心能力（技能/特性）
-- 优势与代价（平衡性）
-- 生存风格（战斗/探索/辅助）
-
-物品类优先问：
-- 使用场景（战斗/生存/建造）
-- 是否有副作用
-- 获取方式
-
-## 步骤三：构建“半成型设计”
-当信息足够时，用自然语言整理出一个“初步设计方案”，包括：
-- 核心概念（像官方描述）
-- 玩法亮点（2-3条）
-- 一点点世界观/设定味道
-
-⚠️ 不要使用JSON格式  
-⚠️ 要像游戏设计师在讲创意  
-
-## 步骤四：继续引导（关键）
-在结尾必须提出2-3个“有方向的选择题式问题”
-
-## 步骤五：对话风格要求
-- 使用自然语言
-- 分段清晰
-- 不要输出代码
-- 不要输出JSON
-"""
-
-# =========================
-# ⚡ 快速生成模式 Prompt（仅做最小修复）
-# =========================
-FAST_PROMPT = """
-# 角色
-你是一个专业的《Don't Starve Together》Mod设计与实现专家。
-
-你需要：
-1. 用自然语言输出完整设计
-2. 最后附带一个JSON结构（用于程序解析）
-
-⚠️ 不要在正文中使用JSON，只允许在最后输出JSON
-
-JSON格式如下：
-{
-  "concept": "...",
-  "mechanics": ["...", "..."],
-  "code_hint": "..."
-}
-"""
-
-# =========================
-# 🧠 提取JSON（稳定版）
-# =========================
-def extract_json(text):
-    try:
-        start = text.find("{")
-        end = text.rfind("}") + 1
-
-        if start != -1 and end != -1:
-            return json.loads(text[start:end])
-    except:
-        pass
-
-    return None
-
-
-# =========================
-# 🧠 清理文本（去掉JSON）
-# =========================
-def clean_text(text):
-    return re.sub(r"\{.*\}", "", text, flags=re.DOTALL).strip()
-
-
-# =========================
-# 🚀 核心调用函数（关键修复点）
-# =========================
-def call_qwen(user_input="", mode="explore", messages=None):
-
-    system_prompt = EXPLORATION_PROMPT if mode == "explore" else FAST_PROMPT
-
-    # 构建 messages
-    if messages:
-        full_messages = [{"role": "system", "content": system_prompt}] + messages
-    else:
-        full_messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input}
-        ]
-
-    try:
-        response = dashscope.Generation.call(
-            model="qwen-plus",
-            messages=full_messages,
-            result_format="message"
-        )
-
-        # ⚠️ 防御
-        if response is None:
-            return {"text": "❌ 模型无返回", "json": None, "raw": None}
-
-        content = response.output.choices[0].message.content
-
-        # 👉 分离
-        parsed_json = extract_json(content)
-        display_text = clean_text(content)
-
-        return {
-            "text": display_text,   # 给用户
-            "json": parsed_json,    # 给系统
-            "raw": content          # 调试用
-        }
-
-    except Exception as e:
-        return {
-            "text": f"❌ API错误: {str(e)}",
-            "json": None,
-            "raw": None
-        }
-
-
-# =========================
-# 🎯 对外封装
-# =========================
-def design_with_llm(user_input):
-    return call_qwen(user_input, mode="fast")
-
-
-def explore_with_llm(messages):
-    return call_qwen("", mode="explore", messages=messages)
+Use Control + Shift + m to toggle the tab key moving focus. Alternatively, use esc then tab to move to the next interactive element on the page.
+ 
