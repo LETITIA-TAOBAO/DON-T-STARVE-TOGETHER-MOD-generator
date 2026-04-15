@@ -1,17 +1,16 @@
 import dashscope
 import os
+import json
+import re
 
 # =========================
-# 🔐 API Key（兼容本地 + Cloud）
+# 🔐 API Key
 # =========================
 dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
 
-# ⚠️ 本地调试可用
-# dashscope.api_key = "你的API_KEY"
-
 
 # =========================
-# 🧠 探索模式 Prompt（保持不变）
+# 🧠 Prompt（尽量保持原样，仅追加JSON要求）
 # =========================
 EXPLORATION_PROMPT = """
 # 角色
@@ -105,9 +104,6 @@ Boss/生物类优先问：
 """
 
 
-# =========================
-# ⚙️ 快速模式 Prompt（保持不变）
-# =========================
 FAST_PROMPT = """
 # 角色
 你是一个专业的《Don't Starve Together》Mod设计与实现专家，精通Klei的设计风格、游戏机制以及Lua Mod开发（包括Prefab、Component、Stategraph等系统）。
@@ -119,43 +115,71 @@ FAST_PROMPT = """
 ⚠️ 禁止输出JSON或键值对格式，必须使用自然语言 + 结构化分段。
 """
 
-# （FAST_PROMPT 后半段你原样保留，这里省略）
+# 🔥 关键增强（不会破坏风格）
+STRUCTURE_HINT = """
+\n\n【系统补充（忽略展示给用户）】
+在回答的最后，请额外附上一段JSON，用于系统解析，格式如下：
+
+{
+  "concept": "一句话概括设计",
+  "entity": "核心实体名称",
+  "mechanics": ["机制1", "机制2"]
+}
+"""
 
 
 # =========================
-# 🧹 文本清洗（核心修复）
+# 🧠 提取JSON（核心能力）
+# =========================
+def extract_json(text):
+
+    try:
+        match = re.search(r"\{.*\}", text, re.S)
+        if match:
+            return json.loads(match.group())
+    except:
+        pass
+
+    return None
+
+
+# =========================
+# 🧹 清洗文本（只给用户看）
 # =========================
 def clean_text(text):
+
     if not text:
         return "（AI没有返回内容）"
 
+    # ❌ 去掉JSON部分
+    text = re.sub(r"\{.*\}", "", text, flags=re.S)
+
     text = text.strip()
 
-    # ❌ 如果模型错误输出JSON，直接转自然语言提示
-    if text.startswith("{") and text.endswith("}"):
-        return "我刚刚整理了一下这个设计，不过我会用更直观的方式重新讲给你👇\n\n" + text
-
+    # ❌ 去掉 0: 1:
     lines = text.split("\n")
-    cleaned_lines = []
+    cleaned = []
 
     for line in lines:
         line = line.strip()
 
-        # 去掉 0: xxx / 1: xxx
         if len(line) > 2 and line[0].isdigit() and ":" in line[:4]:
             line = line.split(":", 1)[-1].strip()
 
-        cleaned_lines.append(line)
+        cleaned.append(line)
 
-    return "\n".join(cleaned_lines)
+    return "\n".join(cleaned)
 
 
 # =========================
-# 🚀 核心调用函数（已修复）
+# 🚀 核心调用
 # =========================
 def call_qwen(user_input="", mode="explore", messages=None):
 
-    system_prompt = EXPLORATION_PROMPT if mode == "explore" else FAST_PROMPT
+    base_prompt = EXPLORATION_PROMPT if mode == "explore" else FAST_PROMPT
+
+    # 👉 自动拼接结构化提示
+    system_prompt = base_prompt + STRUCTURE_HINT
 
     if messages:
         full_messages = [{"role": "system", "content": system_prompt}] + messages
@@ -172,24 +196,38 @@ def call_qwen(user_input="", mode="explore", messages=None):
             result_format="message"
         )
 
-        content = response.output.choices[0].message.content
+        raw_text = response.output.choices[0].message.content
 
-        return clean_text(content)
+        # 🧠 提取结构化数据
+        parsed = extract_json(raw_text)
+
+        # 🧹 清洗给用户的文本
+        clean = clean_text(raw_text)
+
+        return {
+            "text": clean,
+            "data": parsed
+        }
 
     except Exception as e:
-        return f"""我刚刚在连接设计引擎的时候出了点小问题：
+        return {
+            "text": f"""我刚刚在连接设计引擎的时候出了点小问题：
 
 {str(e)}
 
-你可以再试一次，或者换个方式描述你的想法，我会继续帮你把这个Mod设计完善出来。"""
+你可以再试一次，我们一起把这个Mod设计出来。""",
+            "data": None
+        }
 
 
 # =========================
-# 🎯 对外封装（给 app.py 用）
+# 🎯 对外接口
 # =========================
 def design_with_llm(user_input):
-    return call_qwen(user_input, mode="fast")
+    result = call_qwen(user_input, mode="fast")
+    return result
 
 
 def explore_with_llm(messages):
-    return call_qwen("", mode="explore", messages=messages)
+    result = call_qwen("", mode="explore", messages=messages)
+    return result
