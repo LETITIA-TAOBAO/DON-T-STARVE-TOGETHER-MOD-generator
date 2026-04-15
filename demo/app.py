@@ -5,14 +5,14 @@ import base64
 import traceback
 
 try:
-    from llm.qwen_client import design_with_llm, explore_with_llm
+    from qwen_client import design_with_llm, explore_with_llm
 except Exception as e:
     st.error(traceback.format_exc())
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
-from llm.qwen_client import design_with_llm, explore_with_llm
+from qwen_client import design_with_llm, explore_with_llm
 from ui.theme import inject_theme
 from ui.components import render_banner, render_chat
 
