@@ -12,7 +12,7 @@ sys.path.append(BASE_DIR)
 # =========================
 # 🔥 导入模块
 # =========================
-from llm.qwen_client import design_with_llm, explore_with_llm
+from qwen_client import design_with_llm, explore_with_llm
 from generator.image_generator import generate_boss_image
 from generator.packer import build_full_mod
 
