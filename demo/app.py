@@ -8,7 +8,7 @@ import io
 import zipfile
 
 # ========================
-# ⚠️ LLM 安全导入 (关键！不能降级)
+# ⚠️ LLM 安全导入 (核心功能！)
 # ========================
 try:
     from qwen_client import design_with_llm, explore_with_llm
@@ -20,7 +20,7 @@ except Exception as e:
 
 
 # ========================
-# 🎨 CSS + JavaScript (保持背景透明度)
+# 🎨 CSS + JavaScript
 # ========================
 def inject_theme_css_js(bg_url):
     css = f"""
@@ -36,7 +36,6 @@ def inject_theme_css_js(bg_url):
         --border-gold: #A67C3B;
     }}
     
-    /* ===== 全局强制透明 ===== */
     html, body {{
         background-color: transparent !important;
         color: var(--text-primary) !important;
@@ -50,7 +49,7 @@ def inject_theme_css_js(bg_url):
         background: transparent !important;
     }}
     
-    /* ===== 背景图层（提高不透明度）===== */
+    /* ===== 背景图层（提高可见度）===== */
     body::before {{
         content: "" !important;
         position: fixed !important;
@@ -244,33 +243,91 @@ with col2:
 
 
 # ========================
-# 按钮下方说明卡片
+# ⭐⭐⭐⭐⭐ 核心修复：两个说明卡片独立显示 ⭐⭐⭐⭐⭐
 # ========================
-st.markdown("""
-<div style='display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-top:20px;'>
-    <div style='flex:1;min-width:280px;background:rgba(30,20,10,0.75);border:2px solid #aa7733;padding:25px;border-radius:8px;position:relative;'>
-        <div style='position:absolute;top:-15px;right:-15px;font-size:30px;color:#aa7733;transform:rotate(45deg);'>✷</div>
-        <h3 style='font-family:Creepster;color:#ffaa60;font-size:1.5rem;text-align:center;margin:0 0 10px;'>🔥 意志铸剑者</h3>
-        <p style='font-family:IM Fell English SC;color:#d4c4a0;font-size:0.95rem;line-height:1.7;text-align:center;'>
+# ⚠️ 使用 st.markdown 的三重引号 + 单引号避免转义问题
+st.markdown('''
+<style>
+.mode-description-card {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 30px !important;
+}
+.card {
+    flex: 1;
+    min-width: 280px;
+    max-width: 450px;
+    padding: 25px;
+    border-radius: 8px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+}
+.card-rapid {
+    background: rgba(30,20,10,0.75) !important;
+    border: 2px solid #aa7733 !important;
+}
+.card-explore {
+    background: rgba(20,30,20,0.75) !important;
+    border: 2px solid #668844 !important;
+}
+.card-icon {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    font-size: 30px;
+    transform: rotate(45deg);
+}
+.card-title {
+    font-family: Creepster, cursive !important;
+    text-align: center;
+    margin: 0 0 15px 0 !important;
+}
+.card-text {
+    font-family: "IM Fell English SC", serif !important;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    text-align: center;
+    color: #d4c4a0;
+}
+.card-english {
+    color: #888;
+    font-size: 0.8em;
+    font-style: italic;
+    display: block;
+    margin-top: 12px;
+}
+</style>
+
+<div class="mode-description-card">
+    <div class="card card-rapid">
+        <div class="card-icon">✷</div>
+        <h3 class="card-title" style="color: #ffaa60;">🔥 意志铸剑者</h3>
+        <p class="card-text">
         当你已明晰 Mod 的核心法则与物品灵魂，<br>
         无需徘徊于暗影之间，<br>
         将你的疯狂构想直接锻造成可触及的现实。<br><br>
-        <span style='color:#888;font-size:0.8em;font-style:italic;'>For when your vision is clear. Forge it now.</span>
+        <span class="card-english">For when your vision is clear. Forge it now.</span>
         </p>
     </div>
     
-    <div style='flex:1;min-width:280px;background:rgba(20,30,20,0.75);border:2px solid #668844;padding:25px;border-radius:8px;position:relative;'>
-        <div style='position:absolute;top:-15px;right:-15px;font-size:30px;color:#668844;transform:rotate(45deg);'>✷</div>
-        <h3 style='font-family:Creepster;color:#aadd88;font-size:1.5rem;text-align:center;margin:0 0 10px;'>👁️ 迷雾探路者</h3>
-        <p style='font-family:IM Fell English SC;color:#d4c4a0;font-size:0.95rem;line-height:1.7;text-align:center;'>
+    <div class="card card-explore">
+        <div class="card-icon">✷</div>
+        <h3 class="card-title" style="color: #aadd88;">👁️ 迷雾探路者</h3>
+        <p class="card-text">
         当灵感如迷雾般在你脑海中低语，<br>
         混沌尚未凝聚成形，<br>
         与暗影对话，在反复试探中让疯狂的蓝图逐渐清晰。<br><br>
-        <span style='color:#888;font-size:0.8em;font-style:italic;'>For when inspiration is foggy. Talk to the Shadow.</span>
+        <span class="card-english">For when inspiration is foggy. Talk to the Shadow.</span>
         </p>
     </div>
 </div>
-""", unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
 
 # ========================
