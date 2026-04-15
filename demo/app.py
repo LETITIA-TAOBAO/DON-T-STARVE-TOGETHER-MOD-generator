@@ -18,11 +18,12 @@ except ImportError as e:
 # 🔧 Session State
 # ========================
 for key, val in {
-    "mode": "home",
-    "messages": [],
-    "generated_mods": [],
-    "final_design": "",
-    "generating": False,
+    "mode": "home",          # 主页/探索/快速/生成/完成
+    "messages": [],          # 对话历史
+    "generated_mods": [],    # 已生成的mod
+    "final_design": "",      # 最终设计描述
+    "generating": False,     # 是否正在生成
+    "design_confirmed": False, # 用户是否确认设计
 }.items():
     if key not in st.session_state:
         st.session_state[key] = val
@@ -85,13 +86,8 @@ p,li,label,div,span {{ font-family:'IM Fell English SC',serif !important; color:
 }}
 
 /* ─────────────────────────────────────────
-   ⭐ 模式按钮：完全透明覆盖在图片上方
-   ─────────────────────────────────────────
-   原理：图片用 <img> 渲染，
-   Streamlit 按钮用 CSS 让背景全透明，
-   两者用同一列 col 包裹，按钮紧跟图片下方，
-   通过负 margin-top 上移覆盖图片
-*/
+   ⭐ 模式按钮：完全透明覆盖
+   ───────────────────────────────────────── */
 .mode-img {{
     display: block;
     width: 100%;
@@ -100,10 +96,10 @@ p,li,label,div,span {{ font-family:'IM Fell English SC',serif !important; color:
     filter: drop-shadow(0 8px 20px rgba(0,0,0,0.75));
     transition: transform 0.25s ease, filter 0.25s ease;
     cursor: pointer;
-    pointer-events: none;   /* 点击穿透给按钮 */
+    pointer-events: none;
 }}
 
-/* 把 Streamlit 按钮变成透明热区 */
+/* 透明按钮覆盖 */
 div[data-testid="stButton"] > button {{
     background: transparent !important;
     background-color: transparent !important;
@@ -113,20 +109,15 @@ div[data-testid="stButton"] > button {{
     color: transparent !important;
     width: 100% !important;
     height: 80px !important;
-    margin-top: -90px !important;   /* 上移覆盖图片 */
+    margin-top: -90px !important;
     cursor: pointer !important;
     font-size: 0 !important;
     padding: 0 !important;
 }}
-div[data-testid="stButton"] > button:hover ~ .mode-img,
-div[data-testid="stButton"] > button:hover {{
-    background: transparent !important;
-}}
-/* 图片悬停效果（用兄弟选择器无法做，改用 JS 或直接 filter） */
 
 /* ─────────────────────────────────────────
    ⭐ 说明卡片（横排 + txt_box_bg 背景）
-   ─────────────────────────────────────────*/
+   ───────────────────────────────────────── */
 .cards-row {{
     display: flex;
     justify-content: center;
@@ -179,7 +170,6 @@ div[data-testid="stButton"] > button:hover {{
     width: 65%;
     margin: 20px auto 0 auto;
     filter: drop-shadow(0 6px 16px rgba(0,0,0,0.8));
-    /* drop-shadow 保留 PNG 透明通道，不产生白底 */
     transition: transform 0.25s, filter 0.25s;
     pointer-events: none;
 }}
@@ -187,7 +177,6 @@ div[data-testid="stButton"] > button:hover {{
     text-align: center;
     margin: 10px 0 2px 0;
 }}
-/* 透明覆盖按钮 */
 .gen-btn-wrap div[data-testid="stButton"] > button {{
     margin-top: -70px !important;
     height: 70px !important;
@@ -247,6 +236,13 @@ section[data-testid="stSidebar"] * {{ color: #E8D8B8 !important; }}
 /* ─ 滚动条 ─ */
 ::-webkit-scrollbar {{ width: 7px; }}
 ::-webkit-scrollbar-thumb {{ background: #7a3c10; border-radius: 4px; }}
+
+/* ── 返回按钮样式 ── */
+.return-btn button {{
+    background: rgba(60,40,20,0.8) !important;
+    border: 2px solid #8B4513 !important;
+    color: #F5E6C8 !important;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -272,7 +268,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ======================================================
-# ⭐ 主页 —— 关键修复：st.columns 保证按钮可点击
+# ⭐ 主页
 # ======================================================
 if st.session_state.mode == "home":
 
@@ -280,25 +276,25 @@ if st.session_state.mode == "home":
     col_r, col_e = st.columns(2)
 
     with col_r:
-        # 1. 先渲染图片
         st.markdown(f'<img class="mode-img" src="{IMG["rapid"]}" alt="快速生成">',
                     unsafe_allow_html=True)
-        # 2. 透明按钮覆盖（margin-top 负值上移）
         if st.button("rapid", key="k_rapid", use_container_width=True):
-            st.session_state.mode  = "rapid"
+            st.session_state.mode = "rapid"
             st.session_state.messages = []
             st.session_state.final_design = ""
             st.session_state.generating = False
+            st.session_state.design_confirmed = False
             st.rerun()
 
     with col_e:
         st.markdown(f'<img class="mode-img" src="{IMG["explore"]}" alt="探索设计">',
                     unsafe_allow_html=True)
         if st.button("explore", key="k_explore", use_container_width=True):
-            st.session_state.mode  = "explore"
+            st.session_state.mode = "explore"
             st.session_state.messages = []
             st.session_state.final_design = ""
             st.session_state.generating = False
+            st.session_state.design_confirmed = False
             st.rerun()
 
     # ── 说明卡片（横排，txt_box_bg 背景）──
@@ -328,52 +324,6 @@ if st.session_state.mode == "home":
 # ========================
 # 🔧 工具函数
 # ========================
-def safe_explore_llm(user_msg: str, history: list) -> str:
-    """
-    安全调用 explore_with_llm，
-    自动检测函数接受 1 个还是 2 个参数。
-    """
-    import inspect
-    try:
-        params = inspect.signature(explore_with_llm).parameters
-        if len(params) >= 2:
-            raw = explore_with_llm(user_msg, history)
-        else:
-            raw = explore_with_llm(user_msg)
-        if isinstance(raw, dict):
-            return raw.get("text", str(raw))
-        return str(raw)
-    except Exception as exc:
-        return f"（暗影沉默了：{exc}）"
-
-
-def safe_design_llm(design: str, history: list) -> dict:
-    import inspect
-    try:
-        params = inspect.signature(design_with_llm).parameters
-        if len(params) >= 2:
-            raw = design_with_llm(design, history)
-        else:
-            raw = design_with_llm(design)
-        if isinstance(raw, dict):
-            return raw
-        return {"text": str(raw), "data": {}}
-    except Exception as exc:
-        return {"text": f"生成失败：{exc}", "data": {}}
-
-
-def safe_optimize_prompt(design: str) -> str:
-    try:
-        raw = optimize_visual_prompt(design)
-        if isinstance(raw, dict):
-            return raw.get("optimized_prompt",
-                   raw.get("fallback_prompt",
-                   "don't starve together dark fantasy mod icon"))
-        return str(raw)
-    except Exception as exc:
-        return "don't starve together dark fantasy mod icon"
-
-
 def generate_atlas_xml() -> str:
     return '''<?xml version="1.0" encoding="utf-8"?>
 <TextureAtlas imagePath="modicon.tex">
@@ -382,6 +332,7 @@ def generate_atlas_xml() -> str:
 '''
 
 def fetch_icon(prompt: str) -> dict:
+    """从 Pollinations.ai 获取图标"""
     try:
         enc = prompt.replace(" ", "+").replace("&", "%26")
         url = (f"https://image.pollinations.ai/prompt/{enc}"
@@ -394,18 +345,17 @@ def fetch_icon(prompt: str) -> dict:
     except Exception as exc:
         return {"ok": False, "err": str(exc)}
 
-
 def make_zip(mod: dict) -> bytes:
+    """创建 MOD ZIP 文件"""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for name, data in mod.get("all_files", {}).items():
-            zf.writestr(name,
-                data.encode() if isinstance(data, str) else data)
+            zf.writestr(name, data.encode() if isinstance(data, str) else data)
+        # 确保目录存在
         for d in ["sounds/", "images/", "animations/"]:
             zf.writestr(d, b"")
     buf.seek(0)
     return buf.getvalue()
-
 
 def render_chat(messages: list):
     """渲染对话气泡"""
@@ -425,10 +375,18 @@ def render_chat(messages: list):
                 f'{m["content"]}</div>',
                 unsafe_allow_html=True)
 
+def get_design_summary() -> str:
+    """生成设计摘要"""
+    return "\n".join(
+        f"{'用户' if m['role']=='user' else '助手'}: {m['content']}"
+        for m in st.session_state.messages
+    )
+
 # ========================
 # 🔄 生成 MOD 主流程
 # ========================
 def do_generate():
+    """执行 MOD 生成主流程"""
     st.markdown("""
     <div style="background:rgba(25,14,4,0.88);border:2px solid #7a3c10;
                 border-radius:14px;padding:28px;text-align:center;
@@ -443,21 +401,34 @@ def do_generate():
 
     bar = st.progress(0)
 
+    # Step 1: 生成 MOD 代码
     with st.spinner("📝 Qwen 正在撰写 Mod 代码…"):
         bar.progress(15)
-        result = safe_design_llm(st.session_state.final_design, st.session_state.messages)
+        try:
+            result = design_with_llm(st.session_state.final_design, st.session_state.messages)
+        except Exception as e:
+            result = {"text": f"❌ 生成失败：{str(e)}", "data": {}}
     bar.progress(40)
 
+    # Step 2: 优化图标提示词
     with st.spinner("🎨 优化图标描述词…"):
-        img_prompt = safe_optimize_prompt(st.session_state.final_design)
+        try:
+            visual_result = optimize_visual_prompt(st.session_state.final_design)
+            img_prompt = visual_result.get("optimized_prompt", 
+                         visual_result.get("fallback_prompt", 
+                         "Don't Starve style custom mod icon"))
+        except Exception as e:
+            img_prompt = "Don't Starve style custom mod icon"
     bar.progress(60)
 
+    # Step 3: 生成图标
     icon = {"ok": False, "err": "未执行"}
     with st.spinner("🖼️ 绘制 Mod 图标…"):
         icon = fetch_icon(img_prompt)
         if icon["ok"]:
             st.success("✅ 图标生成成功！")
             st.image(icon["url"], width=180, caption="MOD 图标预览")
+            # 将图标添加到结果中
             result.setdefault("data", {}).setdefault("files", {})
             result["data"]["files"]["modicon.tex"] = base64.b64decode(icon["b64"])
             result["data"]["files"]["modicon.xml"] = generate_atlas_xml()
@@ -465,13 +436,37 @@ def do_generate():
             st.warning(f"⚠️ 图标生成失败：{icon['err']}")
     bar.progress(90)
 
-    # 保存消息
+    # Step 4: 生成安装说明
+    install_guide = '''# DST MOD 安装说明
+
+## 安装方法：
+1. 下载 ZIP 文件并解压
+2. 将解压后的文件夹复制到游戏 MOD 目录：
+   - Windows: C:\\Program Files (x86)\\Steam\\steamapps\\common\\Don't Starve Together\\mods
+   - Mac: ~/Library/Application Support/Steam/steamapps/common/Don't Starve Together/mods
+   - Linux: ~/.steam/steam/steamapps/common/Don't Starve Together/mods
+3. 启动游戏，在 MODS 菜单中启用
+
+## 注意事项：
+- 确保游戏已关闭
+- 文件夹名称必须与 modinfo.lua 中的 folder 字段一致
+- 首次加载可能需要较长时间
+
+## 生成时间：''' + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # 将安装说明添加到文件
+    result.setdefault("data", {}).setdefault("files", {})
+    result["data"]["files"]["INSTALL.md"] = install_guide
+
+    bar.progress(100)
+
+    # 保存结果
     st.session_state.messages.append({
         "role": "assistant",
         "content": result.get("text", "✅ Mod 已生成完毕！")
     })
 
-    # 存档 Mod
+    # 保存 mod
     d = result.get("data", {})
     if d:
         st.session_state.generated_mods.append({
@@ -484,13 +479,12 @@ def do_generate():
             "icon_ok":   icon["ok"],
         })
 
-    bar.progress(100)
     st.session_state.generating = False
     st.session_state.mode = "done"
     st.rerun()
 
 # ======================================================
-# 💬 探索模式（多轮对话 → 确认 → 生成）
+# 💬 探索模式（多轮对话引导设计）
 # ======================================================
 if st.session_state.mode == "explore":
 
@@ -500,7 +494,7 @@ if st.session_state.mode == "explore":
         👁️ 迷雾探路者 · 探索设计模式
       </h3>
       <p style="color:#778866;font-size:0.88rem;margin-top:5px;">
-        与暗影助手充分对话 → 设计确定后点击下方「MOD生成」按钮
+        与暗影助手充分对话 → 设计确定后点击「MOD生成」按钮
       </p>
     </div>
     """, unsafe_allow_html=True)
@@ -512,8 +506,14 @@ if st.session_state.mode == "explore":
     user_inp = st.chat_input("描述你的想法，与暗影助手对话…")
     if user_inp:
         st.session_state.messages.append({"role": "user", "content": user_inp})
+        # 调用探索模式 LLM（只传对话历史）
         with st.spinner("🌑 暗影低语中…"):
-            reply = safe_explore_llm(user_inp, st.session_state.messages[:-1])
+            try:
+                # 使用 explore_with_llm 函数，只传对话历史
+                response = explore_with_llm(st.session_state.messages)
+                reply = response.get("text", str(response))
+            except Exception as e:
+                reply = f"（暗影沉默了：{e}）"
         st.session_state.messages.append({"role": "assistant", "content": reply})
         st.rerun()
 
@@ -525,14 +525,13 @@ if st.session_state.mode == "explore":
             f'<img class="gen-img" src="{IMG["generate"]}" alt="MOD生成">'
             f'</div>',
             unsafe_allow_html=True)
-        # 真实可点击按钮
+        
+        # 确认按钮
         c1, c2, c3 = st.columns([1, 2, 1])
         with c2:
             if st.button("🔨 确认生成 MOD", key="explore_gen", use_container_width=True):
-                st.session_state.final_design = "\n".join(
-                    f"{'用户' if m['role']=='user' else '助手'}: {m['content']}"
-                    for m in st.session_state.messages
-                )
+                st.session_state.final_design = get_design_summary()
+                st.session_state.design_confirmed = True
                 st.session_state.generating = True
                 st.rerun()
 
@@ -541,12 +540,20 @@ if st.session_state.mode == "explore":
         do_generate()
 
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("← 返回主页", key="back_explore"):
-        st.session_state.update(mode="home", messages=[], generating=False)
-        st.rerun()
+    with st.container():
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("← 返回主页", key="back_explore"):
+                st.session_state.mode = "home"
+                st.session_state.messages = []
+                st.rerun()
+        with col2:
+            if st.session_state.messages and st.button("🔄 重新开始对话", key="reset_explore"):
+                st.session_state.messages = []
+                st.rerun()
 
 # ======================================================
-# ⚡ 快速生成模式（多轮对话细化 → 确认 → 生成）
+# ⚡ 快速生成模式（用户提供完整想法）
 # ======================================================
 elif st.session_state.mode == "rapid":
 
@@ -556,34 +563,41 @@ elif st.session_state.mode == "rapid":
         🔥 意志铸剑者 · 快速生成模式
       </h3>
       <p style="color:#887744;font-size:0.88rem;margin-top:5px;">
-        输入构想 → LLM 细化确认 → 点击「MOD生成」
+        输入完整想法 → LLM 细化确认 → 点击「MOD生成」
       </p>
     </div>
     """, unsafe_allow_html=True)
 
+    # 渲染历史对话
     render_chat(st.session_state.messages)
 
-    user_inp = st.chat_input("输入你的 Mod 构想…")
+    # 用户输入
+    user_inp = st.chat_input("输入你的完整 Mod 构想…")
     if user_inp:
         st.session_state.messages.append({"role": "user", "content": user_inp})
+        # 快速模式也使用探索 LLM 来细化
         with st.spinner("🌑 暗影正在解读…"):
-            reply = safe_explore_llm(user_inp, st.session_state.messages[:-1])
+            try:
+                response = explore_with_llm(st.session_state.messages)
+                reply = response.get("text", str(response))
+            except Exception as e:
+                reply = f"（暗影沉默了：{e}）"
         st.session_state.messages.append({"role": "assistant", "content": reply})
         st.rerun()
 
+    # 生成按钮（至少 1 轮对话后）
     if len(st.session_state.messages) >= 2:
         st.markdown(
             f'<div class="gen-btn-wrap">'
             f'<img class="gen-img" src="{IMG["generate"]}" alt="MOD生成">'
             f'</div>',
             unsafe_allow_html=True)
+        
         c1, c2, c3 = st.columns([1, 2, 1])
         with c2:
             if st.button("🔨 确认生成 MOD", key="rapid_gen", use_container_width=True):
-                st.session_state.final_design = "\n".join(
-                    f"{'用户' if m['role']=='user' else '助手'}: {m['content']}"
-                    for m in st.session_state.messages
-                )
+                st.session_state.final_design = get_design_summary()
+                st.session_state.design_confirmed = True
                 st.session_state.generating = True
                 st.rerun()
 
@@ -591,9 +605,17 @@ elif st.session_state.mode == "rapid":
         do_generate()
 
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("← 返回主页", key="back_rapid"):
-        st.session_state.update(mode="home", messages=[], generating=False)
-        st.rerun()
+    with st.container():
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("← 返回主页", key="back_rapid"):
+                st.session_state.mode = "home"
+                st.session_state.messages = []
+                st.rerun()
+        with col2:
+            if st.session_state.messages and st.button("🔄 重新开始对话", key="reset_rapid"):
+                st.session_state.messages = []
+                st.rerun()
 
 # ======================================================
 # ✅ 完成页
@@ -611,9 +633,11 @@ elif st.session_state.mode == "done":
     </div>
     """, unsafe_allow_html=True)
 
+    # 显示最后几条对话
     render_chat(st.session_state.messages[-8:])
 
-    ca, cb = st.columns(2)
+    # 操作按钮
+    ca, cb, cc = st.columns(3)
     with ca:
         if st.button("🔄 继续优化", use_container_width=True, key="continue_explore"):
             st.session_state.mode = "explore"
@@ -622,9 +646,15 @@ elif st.session_state.mode == "done":
         if st.button("🏠 返回主页", use_container_width=True, key="done_home"):
             st.session_state.update(mode="home", messages=[])
             st.rerun()
+    with cc:
+        if st.button("📝 查看完整对话", use_container_width=True, key="view_full"):
+            with st.expander("完整对话记录", expanded=True):
+                for msg in st.session_state.messages:
+                    role = "求生者" if msg["role"] == "user" else "暗影助手"
+                    st.text(f"{role}: {msg['content']}")
 
 # ========================
-# 📦 侧边栏
+# 📦 侧边栏：Mod 库
 # ========================
 with st.sidebar:
     st.markdown("### 📦 Mod 库")
@@ -633,16 +663,22 @@ with st.sidebar:
     else:
         for mod in reversed(st.session_state.generated_mods):
             with st.expander(f"📜 {mod['name']} · {mod['date']}"):
-                st.caption(mod.get("desc", ""))
+                st.caption(f"**描述**: {mod.get('desc', '无')}")
+                st.caption(f"**图标生成**: {'✅ 成功' if mod.get('icon_ok') else '❌ 失败'}")
+                st.caption(f"**文件数量**: {len(mod.get('all_files', {}))}")
+                
+                # 下载按钮
                 z = make_zip(mod)
                 st.download_button(
-                    "💾 下载 ZIP",
+                    "💾 下载 MOD ZIP",
                     data=z,
                     file_name=f"{mod['name'].replace(' ','_')}.zip",
                     mime="application/zip",
                     use_container_width=True,
                     key=f"dl_{mod['id']}"
                 )
+                
+                # 重新生成
                 if st.button("🔄 重新优化", key=f"re_{mod['id']}", use_container_width=True):
                     st.session_state.mode = "explore"
                     st.session_state.final_design = mod["design"]
@@ -650,11 +686,17 @@ with st.sidebar:
                         {"role": "user", "content": mod["design"]}
                     ]
                     st.rerun()
+                
+                # 查看文件列表
+                with st.expander("📁 查看文件列表"):
+                    for filename in mod.get("all_files", {}).keys():
+                        st.code(filename, language=None)
 
     st.divider()
     st.caption(f"本次对话：{len(st.session_state.messages)} 条")
+    st.caption(f"已生成 Mod：{len(st.session_state.generated_mods)} 个")
     st.divider()
-    if st.button("🗑️ 清除全部", use_container_width=True):
+    if st.button("🗑️ 清除全部记录", use_container_width=True):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
