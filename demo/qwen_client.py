@@ -74,87 +74,73 @@ Boss/生物类优先问：
 - 机制分支
 - 难度/规模选择
 
-这些问题应该让用户“做选择”，而不是重新从零思考。
-
 ## 步骤五：对话风格要求
 - 使用自然语言（像人类设计师）
-- 分段清晰（可以有小标题，但不要像文档）
+- 分段清晰
 - 避免技术术语堆砌
 - 不要输出JSON
-- 保持轻微引导感（而不是审问）
+- 保持轻微引导感
 
 ## 输出格式（必须遵守）
-
-输出必须为自然对话文本，结构如下：
-
-1. 简短回应 + 复述用户想法（1-2句）
-2. 当前理解的设计方向（可稍微扩展）
-3. 提出2-3个关键引导问题（重点）
-4. （如果信息足够）给出一个“初步设计雏形”
-5. 最后再追加1-2个选择型问题推进对话
+1. 简短回应 + 复述用户想法
+2. 当前理解方向
+3. 引导问题
+4. 设计雏形（如果有）
+5. 选择题推进
 
 禁止输出：
 - JSON
-- 列表编号0/1/2
-- 纯结构化数据
+- 编号列表
+- 结构化数据
 
 '''
-－－－
+
 
 FAST_PROMPT = r'''
 # 角色
-你是一个专业的《Don't Starve Together》Mod设计与实现专家，精通Klei的设计风格、游戏机制以及Lua Mod开发（包括Prefab、Component、Stategraph等系统）。
+你是一个专业的《Don't Starve Together》Mod设计与实现专家，精通Klei的设计风格、游戏机制以及Lua Mod开发。
 
 你不仅能进行创意设计，还能直接将设计转化为可实现的Mod方案与代码结构。
 
-你的输出风格应像一位“资深游戏设计师 + 技术实现者”，既有创意表达，也有工程落地能力。
-
-⚠️ 禁止输出JSON或键值对格式，必须使用自然语言 + 结构化分段。
-
+⚠️ 禁止输出JSON或键值对格式
 '''
-－－－
+
 
 STRUCTURE_HINT = r'''
 \n\n【系统补充（忽略展示给用户）】
-在回答的最后，请额外附上一段JSON，用于系统解析，格式如下：
+在回答的最后，请额外附上一段JSON，用于系统解析：
 
 {
   "concept": "一句话概括设计",
   "entity": "核心实体名称",
   "mechanics": ["机制1", "机制2"]
 }
-
 '''
 
 
 # =========================
-# 🧠 JSON 提取（修复版）
+# 🧠 JSON 提取
 # =========================
 def extract_json(text):
     try:
-        # ✅ 找最后一个 JSON（更稳定）
         matches = re.findall(r"\{[\s\S]*?\}", text)
-
         for m in reversed(matches):
             try:
                 return json.loads(m)
             except:
                 continue
-
     except:
         pass
-
     return None
 
 
 # =========================
-# 🧹 清洗文本（修复版）
+# 🧹 清洗文本
 # =========================
 def clean_text(text):
     if not text:
         return "（AI没有返回内容）"
 
-    # ✅ 只删 STRUCTURE_HINT JSON（更安全）
     text = re.sub(r"\n*\{[\s\S]*?\}\s*$", "", text).strip()
 
     lines = text.split("\n")
@@ -163,7 +149,6 @@ def clean_text(text):
     for line in lines:
         line = line.strip()
 
-        # 去掉 "1:" "2:" 这种编号
         if len(line) > 2 and line[0].isdigit() and ":" in line[:4]:
             line = line.split(":", 1)[-1].strip()
 
@@ -178,8 +163,6 @@ def clean_text(text):
 def call_qwen(user_input="", mode="explore", messages=None):
 
     base_prompt = EXPLORATION_PROMPT if mode == "explore" else FAST_PROMPT
-
-    # ⚠️ 保持你原逻辑（不改prompt）
     system_prompt = base_prompt + STRUCTURE_HINT
 
     if messages:
@@ -199,12 +182,9 @@ def call_qwen(user_input="", mode="explore", messages=None):
 
         raw_text = response.output.choices[0].message.content
 
-        parsed = extract_json(raw_text)
-        clean = clean_text(raw_text)
-
         return {
-            "text": clean,
-            "data": parsed
+            "text": clean_text(raw_text),
+            "data": extract_json(raw_text)
         }
 
     except Exception as e:
@@ -215,7 +195,7 @@ def call_qwen(user_input="", mode="explore", messages=None):
 
 
 # =========================
-# 🎯 对外接口
+# 🎯 API
 # =========================
 def design_with_llm(user_input):
     return call_qwen(user_input, mode="fast")
