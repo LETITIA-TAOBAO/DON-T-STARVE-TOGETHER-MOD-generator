@@ -23,6 +23,7 @@ defaults = {
     "messages": [],
     "generated_mods": [],
     "final_design": "",
+    "explore_confirmed": False,
     "generating": False,
 }
 for k, v in defaults.items():
@@ -38,14 +39,14 @@ ASSETS_PATH = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/ma
 
 IMAGES = {
     "bg":           f"{ASSETS_PATH}background.jpg.png",
-    "btn_rapid":    f"{ASSETS_PATH}btn_play.png",
+    "btn_rapid":    f"{ASSETS_PATH}btn_play.png",    # 修正为btn_play
     "btn_explore":  f"{ASSETS_PATH}btn_explore.png",
     "btn_generate": f"{ASSETS_PATH}mod_generate.png",
     "card_bg":      f"{ASSETS_PATH}txt_box_bg.png",
 }
 
 # ========================
-# 🎨 全局 CSS (深度定制)
+# 🎨 全局 CSS
 # ========================
 st.markdown(f"""
 <style>
@@ -59,6 +60,7 @@ st.markdown(f"""
     background-size: cover !important;
     background-position: center !important;
     background-attachment: fixed !important;
+    min-height: 100vh;
 }}
 html, body, [class*="css"] {{ background-color: transparent !important; }}
 .stApp::before {{
@@ -66,7 +68,7 @@ html, body, [class*="css"] {{ background-color: transparent !important; }}
     position: fixed; top: 0; left: 0;
     width: 100%; height: 100%;
     z-index: -1;
-    background: linear-gradient(rgba(20,15,10,0.6), rgba(15,10,5,0.8));
+    background: linear-gradient(rgba(20,15,10,0.65), rgba(15,10,5,0.82));
 }}
 
 /* ── 字体 ── */
@@ -75,133 +77,198 @@ p,span,div,label {{ font-family:'IM Fell English SC' !important; color:#F5E6C8 !
 
 /* ── Banner ── */
 .banner-box {{
-    background: rgba(30,20,10,0.8);
+    background: rgba(30,20,10,0.78);
     border: 3px solid #A67C3B;
-    padding: 30px;
+    padding: 40px;
     border-radius: 12px;
     text-align: center;
-    margin: 20px auto;
-    max-width: 800px;
-    box-shadow: 0 0 30px rgba(0,0,0,0.8);
+    margin: 30px auto;
+    max-width: 900px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.8);
 }}
 
 /* ══════════════════════════════════════
-   ⭐ 核心修复：将按钮直接变成图片
+   ⭐ 模式选择区：两个图片按钮并排
    ══════════════════════════════════════ */
-/* 移除所有 Streamlit 按钮的默认丑陋样式 */
-div.stButton > button {{
-    border: none !important;
-    background-image: none !important;
-    background-color: transparent !important;
-    box-shadow: none !important;
-    color: transparent !important; /* 隐藏按钮文字 */
-    transition: transform 0.2s ease !important;
+.mode-select-wrapper {{
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 60px;
+    margin: 40px auto 10px auto;
+    max-width: 1100px;
+}}
+
+/* 每个按钮组（图片按钮 + 说明卡片纵向堆叠） */
+.mode-col {{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    flex: 1;
+    max-width: 460px;
+}}
+
+/* 图片按钮容器（修复点击区域+去除白色底） */
+.img-btn-wrap {{
+    width: 100%;
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+}}
+.img-btn-wrap img {{
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    display: block;
+    background: transparent !important;
+    transition: transform 0.25s ease, filter 0.25s ease;
+    filter: drop-shadow(0 6px 18px rgba(0,0,0,0.7));
+}}
+.img-btn-wrap img:hover {{
+    transform: scale(1.06) translateY(-4px);
+    filter: drop-shadow(0 12px 28px rgba(0,0,0,0.85)) brightness(1.15);
+}}
+/* 透明按钮完全覆盖图片 */
+.img-btn-wrap .stButton {{
+    position: absolute !important;
+    top: 0 !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 10 !important;
+}}
+.img-btn-wrap .stButton > button {{
+    opacity: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
     cursor: pointer !important;
 }}
-div.stButton > button:hover {{
-    transform: scale(1.05) !important;
-    border: none !important;
-    background-color: transparent !important;
-    color: transparent !important;
-}}
-div.stButton > button:active {{
-    transform: scale(0.95) !important;
-    background-color: transparent !important;
-}}
 
-/* 分别为 快速 和 探索 按钮设置背景图 */
-div[data-testid="stButton"] button[key="rapid_btn"] {{
-    background-image: url("{IMAGES['btn_rapid']}") !important;
-    background-size: contain !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    width: 400px !important;
-    height: 120px !important;
-}}
-
-div[data-testid="stButton"] button[key="explore_btn"] {{
-    background-image: url("{IMAGES['btn_explore']}") !important;
-    background-size: contain !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    width: 400px !important;
-    height: 120px !important;
-}}
-
-div[data-testid="stButton"] button[key="gen_btn"] {{
-    background-image: url("{IMAGES['btn_generate']}") !important;
-    background-size: contain !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    width: 450px !important;
-    height: 130px !important;
-}}
-
-/* ── 说明卡片 (修复背景显示) ── */
+/* ══════════════════════════════════════
+   ⭐ 说明卡片：修复对话框背景显示
+   ══════════════════════════════════════ */
 .cards-row {{
     display: flex;
     justify-content: center;
-    gap: 40px;
-    margin: 20px auto 50px auto;
+    align-items: stretch;
+    gap: 60px;
+    margin: 0 auto 40px auto;
     max-width: 1100px;
+    padding: 0 20px;
 }}
+
 .card-item {{
     flex: 1;
-    max-width: 480px;
-    min-height: 220px;
+    max-width: 460px;
+    min-height: 280px;
     background-image: url("{IMAGES['card_bg']}");
-    background-size: 100% 100% !important;
+    background-size: contain !important;
     background-repeat: no-repeat !important;
-    background-position: center !important;
-    padding: 50px 40px 40px 40px;
+    background-position: center center !important;
+    padding: 60px 36px 36px 36px;
+    border-radius: 10px;
     text-align: center;
-    box-sizing: border-box;
+    transition: transform 0.3s ease;
+}}
+.card-item:hover {{
+    transform: translateY(-4px);
 }}
 .card-title {{
     font-family: Creepster !important;
-    font-size: 1.6rem !important;
-    margin-bottom: 10px !important;
+    font-size: 1.5rem !important;
+    margin-bottom: 12px !important;
+    text-shadow: 0 0 8px rgba(255,215,0,0.4);
 }}
+.card-rapid .card-title  {{ color: #ffaa60 !important; }}
+.card-explore .card-title {{ color: #aadd88 !important; }}
 .card-text {{
-    font-size: 1rem !important;
-    line-height: 1.6 !important;
+    font-family: "IM Fell English SC" !important;
+    font-size: 0.95rem !important;
+    line-height: 1.75 !important;
     color: #d4c4a0 !important;
 }}
 .card-en {{
-    display: block;
-    font-style: italic;
-    font-size: 0.85rem;
-    color: #998877;
-    margin-top: 10px;
+    color: #998877 !important;
+    font-size: 0.82em !important;
+    font-style: italic !important;
+    display: block !important;
+    margin-top: 10px !important;
 }}
 
-/* ── 聊天和进度 ── */
+/* ── MOD生成按钮 ── */
+.gen-btn-wrap {{
+    display: flex;
+    justify-content: center;
+    margin: 30px auto;
+}}
+.gen-btn-wrap img {{
+    max-width: 480px;
+    width: 80%;
+    height: auto;
+    cursor: pointer;
+    transition: transform 0.25s, filter 0.25s;
+    filter: drop-shadow(0 6px 18px rgba(0,0,0,0.7));
+}}
+.gen-btn-wrap img:hover {{
+    transform: scale(1.06) translateY(-4px);
+    filter: brightness(1.2) drop-shadow(0 10px 24px rgba(0,0,0,0.85));
+}}
+
+/* ── 聊天消息 ── */
 .chat-msg {{
-    background: rgba(30,20,10,0.9);
+    background: rgba(30,20,10,0.88);
     border-left: 4px solid #FF8C00;
-    padding: 15px;
-    margin: 10px 0;
+    padding: 14px 18px;
+    margin: 12px 0;
     border-radius: 0 8px 8px 0;
 }}
 .chat-msg.assistant {{
-    background: rgba(20,30,20,0.9);
+    background: rgba(18,28,18,0.88);
     border-left-color: #66BB6A;
 }}
-.gen-progress-box {{
-    background: rgba(30,20,10,0.9);
-    border: 2px solid #8B4513;
-    border-radius: 15px;
-    padding: 40px;
-    text-align: center;
-    margin: 20px auto;
-    max-width: 600px;
+.chat-name {{ font-family: Creepster !important; font-size: 1.05rem; }}
+
+/* ── 侧边栏 ── */
+section[data-testid="stSidebar"] {{
+    background: rgba(25,15,8,0.98) !important;
+    border-right: 4px solid #8B4513 !important;
+}}
+section[data-testid="stSidebar"] * {{ color: #F5E6C8 !important; }}
+
+/* ── 聊天输入 ── */
+[data-testid="stChatInput"] textarea {{
+    background-color: rgba(40,30,20,0.92) !important;
+    border: 3px solid #8B4513 !important;
+    color: #F5E6C8 !important;
+    font-family: 'IM Fell English SC' !important;
+    border-radius: 8px !important;
+}}
+[data-testid="stChatInput"] textarea:focus {{
+    border-color: #FFA726 !important;
 }}
 
-/* 侧边栏样式 */
-section[data-testid="stSidebar"] {{
-    background: rgba(20,10,5,0.98) !important;
-    border-right: 3px solid #8B4513 !important;
+/* 进度区与加载动画 */
+.gen-progress {{
+    background: rgba(30,20,10,0.85);
+    border: 2px solid #8B4513;
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    margin: 30px auto;
+    max-width: 700px;
 }}
+.stSpinner {{
+    color: #FFD700 !important;
+}}
+.stProgress > div > div {{
+    background-color: #FFD700 !important;
+}}
+
+::-webkit-scrollbar {{ width: 8px; }}
+::-webkit-scrollbar-thumb {{ background: #8B4513; border-radius: 4px; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -210,192 +277,407 @@ section[data-testid="stSidebar"] {{
 # ========================
 st.markdown("""
 <div class="banner-box">
-  <h1 style="font-size:3rem;margin:0;">饥荒 MOD 生成器</h1>
-  <p style="font-family:Griffy;color:#aa8855;font-size:1.2rem;letter-spacing:2px;margin-top:5px;">
+  <h1 style="font-size:3.2rem;margin:0;text-shadow:0 0 25px rgba(255,215,0,0.55);">饥荒 MOD 生成器</h1>
+  <p style="font-family:Griffy;color:#aa8855;font-size:1.3rem;letter-spacing:3px;margin-top:8px;">
     DON'T STARVE TOGETHER MOD GENERATOR
   </p>
-  <hr style="width:40%;border:none;border-top:2px solid #8B4513;margin:15px auto;">
-  <p style="font-size:1rem;line-height:1.6;">
+  <hr style="width:45%;border:none;border-top:2px solid #8B4513;margin:18px auto;">
+  <p style="line-height:1.8;font-size:1.05rem;max-width:780px;margin:0 auto;">
     当理智归零，现实崩塌。<br>
-    <span style="color:#FFA726;">You are no longer a survivor, but a Creator.</span>
+    <span style="color:#FFA726;text-shadow:0 0 10px rgba(255,167,38,0.5);">
+      You are no longer a survivor, but a Creator.
+    </span>
   </p>
 </div>
 """, unsafe_allow_html=True)
 
 # ========================
-# 🏠 主页界面
+# ⭐ 主页：两个模式按钮（修复点击+图片正确）
 # ========================
 if st.session_state.mode == "home":
-    # 按钮行
+
+    # —— 图片按钮行 ——
+    st.markdown('<div class="mode-select-wrapper">', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
+
     with col1:
-        if st.button("快速生成", key="rapid_btn"):
+        st.markdown(f"""
+        <div class="img-btn-wrap">
+          <img src="{IMAGES['btn_rapid']}" alt="快速生成">
+        </div>
+        """, unsafe_allow_html=True)
+        # 透明按钮完全覆盖图片
+        if st.button("快速生成", key="btn_rapid_click", use_container_width=True):
             st.session_state.mode = "rapid"
             st.session_state.messages = []
-            st.rerun()
-    with col2:
-        if st.button("探索设计", key="explore_btn"):
-            st.session_state.mode = "explore"
-            st.session_state.messages = []
+            st.session_state.final_design = ""
+            st.session_state.explore_confirmed = False
             st.rerun()
 
-    # 说明卡片行
+    with col2:
+        st.markdown(f"""
+        <div class="img-btn-wrap">
+          <img src="{IMAGES['btn_explore']}" alt="探索设计">
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("探索设计", key="btn_explore_click", use_container_width=True):
+            st.session_state.mode = "explore"
+            st.session_state.messages = []
+            st.session_state.final_design = ""
+            st.session_state.explore_confirmed = False
+            st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # —— 横排说明卡片 ——
     st.markdown(f"""
     <div class="cards-row">
-      <div class="card-item">
-        <div class="card-title" style="color:#ffaa60;">🔥 意志铸剑者</div>
-        <div class="card-text">
+      <div class="card-item card-rapid">
+        <p class="card-title">🔥 意志铸剑者</p>
+        <p class="card-text">
           当你已明晰 Mod 的核心法则与物品灵魂<br>
           无需徘徊于暗影之间<br>
           将你的疯狂构想直接锻造成可触及的现实
           <span class="card-en">For when your vision is clear. Forge it now.</span>
-        </div>
+        </p>
       </div>
-      <div class="card-item">
-        <div class="card-title" style="color:#aadd88;">👁️ 迷雾探路者</div>
-        <div class="card-text">
+      <div class="card-item card-explore">
+        <p class="card-title">👁️ 迷雾探路者</p>
+        <p class="card-text">
           当灵感如迷雾般在你脑海中低语<br>
           混沌尚未凝聚成形<br>
           与暗影对话，在反复试探中让疯狂的蓝图逐渐清晰
           <span class="card-en">For when inspiration is foggy. Talk to the Shadow.</span>
-        </div>
+        </p>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
 # ========================
-# 🛠️ 工具函数
+# 🔧 工具函数
 # ========================
 def generate_atlas_xml():
-    return '<?xml version="1.0" encoding="utf-8"?><TextureAtlas imagePath="modicon.tex"><SubTexture name="default" x="0" y="0" width="512" height="512"/></TextureAtlas>'
+    return '''<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="modicon.tex">
+  <SubTexture name="default" x="0" y="0" width="512" height="512"/>
+</TextureAtlas>
+'''
 
-def generate_icon_with_pollinations(prompt):
+def generate_icon_with_pollinations(prompt: str) -> dict:
     try:
+        if not prompt or len(prompt) < 5:
+            return {"success": False, "error": "Prompt 太短"}
         encoded = prompt.replace(" ", "+").replace("&", "%26")
-        url = f"https://image.pollinations.ai/prompt/{encoded}?width=512&height=512&nologo=true&seed={int(datetime.now().timestamp())}"
-        resp = requests.get(url, timeout=45)
-        if resp.status_code == 200:
-            return {"success": True, "base64": base64.b64encode(resp.content).decode(), "url": url}
-        return {"success": False, "error": "HTTP Error"}
-    except: return {"success": False, "error": "Request Failed"}
+        url = (f"https://image.pollinations.ai/prompt/{encoded}"
+               f"?width=512&height=512&nologo=true&seed={int(datetime.now().timestamp())}")
+        resp = requests.get(url, timeout=50)
+        if resp.status_code == 200 and len(resp.content) > 1000:
+            return {"success": True,
+                    "base64": base64.b64encode(resp.content).decode(),
+                    "url": url}
+        return {"success": False, "error": f"HTTP {resp.status_code}"}
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
 
-def create_mod_zip(mod_data):
+def create_mod_zip(mod_data: dict) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for name, content in mod_data.get("all_files", {}).items():
-            zf.writestr(name, content.encode("utf-8") if isinstance(content, str) else content)
-        for d in ["sounds/", "images/", "animations/"]: zf.writestr(d, "")
+            if isinstance(content, str):
+                zf.writestr(name, content.encode("utf-8"))
+            elif isinstance(content, bytes):
+                zf.writestr(name, content)
+        for d in ["sounds/", "images/", "animations/"]:
+            zf.writestr(d, "")
     buf.seek(0)
     return buf.getvalue()
 
 # ========================
-# 🚀 生成逻辑 (包含加载动画)
+# 🔄 实际生成 MOD 的逻辑
 # ========================
-def start_full_generation():
-    st.markdown('<div class="gen-progress-box">', unsafe_allow_html=True)
-    st.markdown('<h2 style="color:#FFD700;margin-bottom:10px;">世界正在扭曲...</h2>', unsafe_allow_html=True)
-    st.markdown('<p>The shadows are weaving your madness...</p>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
+def do_generate_mod():
+    """执行 MOD 生成全流程，结果写入 session_state"""
+    st.markdown("""
+    <div class="gen-progress">
+      <h2 style="font-family:Creepster;font-size:2.2rem;color:#FFD700;">世界正在扭曲……</h2>
+      <p>The shadows are weaving your madness...</p>
+    </div>
+    """, unsafe_allow_html=True)
+
     progress_bar = st.progress(0)
-    
-    with st.spinner("📝 Qwen 正在锻造 Mod 代码..."):
-        progress_bar.progress(30)
+
+    # Step 1: 生成代码
+    with st.spinner("📝 Qwen 正在生成 Mod 代码…"):
+        progress_bar.progress(20)
         result = design_with_llm(st.session_state.final_design, st.session_state.messages)
-    
-    with st.spinner("🎨 正在优化视觉图腾..."):
-        progress_bar.progress(60)
-        visual = optimize_visual_prompt(st.session_state.final_design)
-        prompt = visual.get("optimized_prompt", "dst mod icon")
-        
-    with st.spinner("🖼️ Pollinations.ai 正在绘制灵魂图像..."):
-        progress_bar.progress(80)
-        icon = generate_icon_with_pollinations(prompt)
-        if icon["success"]:
-            st.image(icon["url"], width=200)
-            result.setdefault("data", {}).setdefault("files", {})["modicon.tex"] = base64.b64decode(icon["base64"])
+
+    # Step 2: 优化图标 prompt
+    with st.spinner("🎨 正在优化图标提示词…"):
+        progress_bar.progress(50)
+        visual_result = optimize_visual_prompt(st.session_state.final_design)
+        image_prompt = visual_result.get("optimized_prompt",
+                       visual_result.get("fallback_prompt", "don't starve together mod icon"))
+
+    # Step 3: 生成图标
+    icon_result = {"success": False, "error": "未执行"}
+    with st.spinner("🖼️ Pollinations.ai 正在绘制图标…"):
+        progress_bar.progress(75)
+        icon_result = generate_icon_with_pollinations(image_prompt)
+        if icon_result["success"]:
+            st.success("✅ 图标生成成功！")
+            st.image(icon_result["url"], caption="生成的图标预览", width=200)
+            if "files" not in result.get("data", {}):
+                result.setdefault("data", {})["files"] = {}
+            result["data"]["files"]["modicon.tex"] = base64.b64decode(icon_result["base64"])
             result["data"]["files"]["modicon.xml"] = generate_atlas_xml()
-        
+        else:
+            st.warning(f"⚠️ 图标生成失败：{icon_result['error']}")
+
     progress_bar.progress(100)
-    st.success("✅ MOD 铸造成功！")
-    
-    # 保存结果
-    mod_data = result.get("data", {})
-    st.session_state.generated_mods.append({
-        "id": len(st.session_state.generated_mods)+1,
-        "name": mod_data.get("name", "Unnamed Mod"),
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "design": st.session_state.final_design,
-        "all_files": mod_data.get("files", {})
+
+    # 保存 assistant 回复
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": result.get("text", "Mod 已生成完毕。")
     })
+
+    # 记录 mod
+    mod_data = result.get("data", {})
+    if mod_data:
+        st.session_state.generated_mods.append({
+            "id": len(st.session_state.generated_mods) + 1,
+            "name": mod_data.get("name", f"Mod #{len(st.session_state.generated_mods)+1}"),
+            "desc": mod_data.get("desc", ""),
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "design": st.session_state.final_design,
+            "all_files": mod_data.get("files", {}),
+            "icon_generated": icon_result["success"],
+        })
+
+    # 重置生成标志
+    st.session_state.generating = False
+    st.session_state.explore_confirmed = False
     st.session_state.mode = "done"
     st.rerun()
 
 # ========================
-# 💬 聊天界面 (Explore & Rapid)
+# 💬 探索模式（多轮对话）
 # ========================
-if st.session_state.mode in ["explore", "rapid"]:
-    title = "👁️ 迷雾探路者" if st.session_state.mode == "explore" else "🔥 意志铸剑者"
-    st.markdown(f"<h3 style='text-align:center;color:#FFD700;'>{title} - { '探索设计模式' if st.session_state.mode == 'explore' else '快速生成模式'}</h3>", unsafe_allow_html=True)
+if st.session_state.mode == "explore":
 
-    # 渲染对话记录
+    st.markdown("""
+    <div style="text-align:center;padding:12px 0 4px 0;">
+      <h3 style="font-family:Creepster;color:#4CAF50;font-size:1.8rem;">
+        👁️ 迷雾探路者 · 探索设计模式
+      </h3>
+      <p style="color:#aaa;font-size:0.95rem;">
+        与暗影助手充分对话，确认设计后点击「MOD生成」按钮
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # —— 展示历史对话 ——
     for msg in st.session_state.messages:
-        role_class = "assistant" if msg["role"] == "assistant" else ""
-        name = "暗影设计助手" if msg["role"] == "assistant" else "求生者"
-        color = "#66BB6A" if msg["role"] == "assistant" else "#FF8C00"
-        st.markdown(f'<div class="chat-msg {role_class}"><b style="color:{color};">{name}</b><br>{msg["content"]}</div>', unsafe_allow_html=True)
+        if not isinstance(msg, dict):
+            continue
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        css_cls = "chat-msg" if role == "user" else "chat-msg assistant"
+        color    = "#FF8C00"  if role == "user" else "#66BB6A"
+        name     = "求生者"   if role == "user" else "暗影设计助手"
+        st.markdown(
+            f'<div class="{css_cls}">'
+            f'<span class="chat-name" style="color:{color};">{name}</span><br>{content}'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
-    # 输入框
-    user_input = st.chat_input("输入你的想法...")
+    # —— 用户输入框 ——
+    user_input = st.chat_input("描述你的想法，与暗影助手对话…")
     if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
-        with st.spinner("暗影低语中..."):
-            # 无论哪个模式，初步对话都用 explore_with_llm 来细化
-            reply = explore_with_llm(user_input, st.session_state.messages[:-1])
-            st.session_state.messages.append({"role": "assistant", "content": reply if isinstance(reply, str) else reply.get("text", "...")})
+        # 调用 LLM 探索对话
+        with st.spinner("暗影低语中…"):
+            try:
+                reply = explore_with_llm(user_input, st.session_state.messages[:-1])
+                reply_text = reply.get("text", reply) if isinstance(reply, dict) else str(reply)
+            except Exception as exc:
+                reply_text = f"（暗影沉默了：{exc}）"
+        st.session_state.messages.append({"role": "assistant", "content": reply_text})
         st.rerun()
 
-    # MOD 生成按钮 (点击后才开始生成流程)
+    # —— MOD生成 按钮 ——
     if len(st.session_state.messages) >= 2:
-        st.markdown("<div style='text-align:center;margin-top:30px;'>", unsafe_allow_html=True)
-        if st.button("确认生成", key="gen_btn"):
-            st.session_state.final_design = "\n".join([f"{m['role']}:{m['content']}" for m in st.session_state.messages])
-            st.session_state.generating = True
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown('<div class="gen-btn-wrap">', unsafe_allow_html=True)
+        st.markdown(f'<img src="{IMAGES["btn_generate"]}" alt="MOD生成">', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
+        col_l, col_c, col_r = st.columns([2, 3, 2])
+        with col_c:
+            if st.button("🔨 确认生成 MOD", key="explore_gen_btn", use_container_width=True):
+                summary = "\n".join(
+                    f"{'用户' if m['role']=='user' else '助手'}: {m['content']}"
+                    for m in st.session_state.messages
+                )
+                st.session_state.final_design = summary
+                st.session_state.generating = True
+                st.rerun()
+
+    # —— 如果已触发生成 ——
     if st.session_state.generating:
-        start_full_generation()
+        do_generate_mod()
 
-    if st.button("← 返回主页"):
+    # —— 返回主页 ——
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("← 返回主页", key="back_from_explore"):
         st.session_state.mode = "home"
         st.session_state.messages = []
-        st.session_state.generating = False
         st.rerun()
 
 # ========================
-# ✅ 完成界面
+# ⚡ 快速生成模式
+# ========================
+elif st.session_state.mode == "rapid":
+
+    st.markdown("""
+    <div style="text-align:center;padding:12px 0 4px 0;">
+      <h3 style="font-family:Creepster;color:#FFD700;font-size:1.8rem;">
+        🔥 意志铸剑者 · 快速生成模式
+      </h3>
+      <p style="color:#aaa;font-size:0.95rem;">
+        输入你完整的 Mod 构想，LLM 将帮你细化方案。确认后点击「MOD生成」。
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # —— 展示历史对话 ——
+    for msg in st.session_state.messages:
+        if not isinstance(msg, dict):
+            continue
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        css_cls = "chat-msg" if role == "user" else "chat-msg assistant"
+        color    = "#FF8C00"  if role == "user" else "#66BB6A"
+        name     = "求生者"   if role == "user" else "暗影设计助手"
+        st.markdown(
+            f'<div class="{css_cls}">'
+            f'<span class="chat-name" style="color:{color};">{name}</span><br>{content}'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+    # —— 输入框 ——
+    user_input = st.chat_input("输入你的完整 Mod 构想…")
+    if user_input:
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        with st.spinner("暗影正在解读你的构想…"):
+            try:
+                reply = explore_with_llm(user_input, st.session_state.messages[:-1])
+                reply_text = reply.get("text", reply) if isinstance(reply, dict) else str(reply)
+            except Exception as exc:
+                reply_text = f"（暗影沉默了：{exc}）"
+        st.session_state.messages.append({"role": "assistant", "content": reply_text})
+        st.rerun()
+
+    # —— MOD生成 按钮 ——
+    if len(st.session_state.messages) >= 2:
+        st.markdown('<div class="gen-btn-wrap">', unsafe_allow_html=True)
+        st.markdown(f'<img src="{IMAGES["btn_generate"]}" alt="MOD生成">', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        col_l, col_c, col_r = st.columns([2, 3, 2])
+        with col_c:
+            if st.button("🔨 确认生成 MOD", key="rapid_gen_btn", use_container_width=True):
+                summary = "\n".join(
+                    f"{'用户' if m['role']=='user' else '助手'}: {m['content']}"
+                    for m in st.session_state.messages
+                )
+                st.session_state.final_design = summary
+                st.session_state.generating = True
+                st.rerun()
+
+    if st.session_state.generating:
+        do_generate_mod()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("← 返回主页", key="back_from_rapid"):
+        st.session_state.mode = "home"
+        st.session_state.messages = []
+        st.rerun()
+
+# ========================
+# ✅ 生成完成展示页
 # ========================
 elif st.session_state.mode == "done":
-    st.markdown("<h2 style='text-align:center;'>✨ MOD 铸造完成！</h2>", unsafe_allow_html=True)
-    st.info("请在侧边栏的 Mod 库中下载你的作品。")
-    if st.button("🏠 返回主页"):
-        st.session_state.mode = "home"
-        st.rerun()
+    st.markdown("""
+    <div style="text-align:center;padding:30px 0 10px 0;">
+      <h2 style="font-family:Creepster;color:#FFD700;font-size:2.5rem;">
+        ✨ MOD 铸造完成！
+      </h2>
+      <p style="color:#aaa;">前往侧边栏下载你的 Mod，或继续对话优化。</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 展示最后一轮对话
+    for msg in st.session_state.messages[-6:]:
+        if not isinstance(msg, dict):
+            continue
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        css_cls = "chat-msg" if role == "user" else "chat-msg assistant"
+        color    = "#FF8C00"  if role == "user" else "#66BB6A"
+        name     = "求生者"   if role == "user" else "暗影设计助手"
+        st.markdown(
+            f'<div class="{css_cls}">'
+            f'<span class="chat-name" style="color:{color};">{name}</span><br>{content}'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        if st.button("🔄 继续优化（探索模式）", use_container_width=True):
+            st.session_state.mode = "explore"
+            st.rerun()
+    with col_b:
+        if st.button("🏠 返回主页", use_container_width=True):
+            st.session_state.mode = "home"
+            st.session_state.messages = []
+            st.rerun()
 
 # ========================
-# 📦 侧边栏
+# 📦 侧边栏：Mod 库
 # ========================
 with st.sidebar:
     st.markdown("### 📦 Mod 库")
+
     if not st.session_state.generated_mods:
         st.write("暂无 Mod 创作")
     else:
         for mod in st.session_state.generated_mods:
-            st.write(f"**{mod['name']}**")
-            st.download_button("💾 下载", data=create_mod_zip(mod), file_name=f"{mod['name']}.zip", key=f"dl_{mod['id']}")
-    
+            st.write(f"**{mod['name']}** ({mod['date']})")
+            col_dl, col_re = st.columns(2)
+            with col_dl:
+                zip_data = create_mod_zip(mod)
+                st.download_button(
+                    label="💾 下载",
+                    data=zip_data,
+                    file_name=f"{mod['name'].replace(' ','_')}.zip",
+                    mime="application/zip",
+                    use_container_width=True,
+                    key=f"dl_{mod['id']}"
+                )
+            with col_re:
+                if st.button("🔄", key=f"regen_{mod['id']}", use_container_width=True):
+                    st.session_state.mode = "explore"
+                    st.session_state.final_design = mod.get("design", "")
+                    st.session_state.messages = [{"role": "user", "content": mod.get("design", "")}]
+                    st.rerun()
+
+    st.divider()
+    st.write(f"对话：{len(st.session_state.messages)} 条")
     st.divider()
     if st.button("🗑️ 清除全部记录"):
-        st.session_state.clear()
+        for k in list(st.session_state.keys()):
+            del st.session_state[k]
         st.rerun()
