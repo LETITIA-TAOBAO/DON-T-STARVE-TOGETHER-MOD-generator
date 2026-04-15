@@ -1,110 +1,103 @@
 def inject_theme(bg_base64=None):
-    # 如果没有图片，提供一个深色底色防止白屏
     bg_image = f'url("data:image/png;base64,{bg_base64}")' if bg_base64 else "none"
 
     return f"""
     <style>
     /* =========================
-       🌑 全局基础风格
+       🔤 引入饥荒风格字体（手写/歪扭感）
     ========================= */
-    
-    /* 1. 核心修复：直接给主容器设置背景，不再使用 ::before/::after 遮罩 */
+    @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Griffy&display=swap');
+
+    /* =========================
+       🌑 全局基础
+    ========================= */
     .stApp {{
-        background: 
-            linear-gradient(rgba(10, 10, 10, 0.8), rgba(5, 5, 5, 0.95)), 
+        background:
+            linear-gradient(rgba(8, 6, 4, 0.82), rgba(3, 3, 3, 0.95)),
             {bg_image};
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
         color: #f5e6c8;
-        font-family: "Georgia", "Times New Roman", serif;
+        font-family: 'Griffy', 'Georgia', cursive, serif;
     }}
 
-    /* 移除所有干扰背景的透明度设置，防止 UI 塌陷 */
-    [data-testid="stAppViewContainer"] {{
+    /* 去掉所有容器默认白色背景 */
+    [data-testid="stAppViewContainer"],
+    [data-testid="stHeader"],
+    [data-testid="stToolbar"],
+    [data-testid="stDecoration"],
+    header {{
         background-color: transparent !important;
+        background: transparent !important;
+    }}
+
+    /* 顶部白条彻底消失 */
+    [data-testid="stHeader"] {{
+        height: 0px !important;
+        min-height: 0px !important;
+        padding: 0 !important;
     }}
 
     /* =========================
-       🪵 文字与标题风格
+       🪵 标题（饥荒歪扭手写风）
     ========================= */
-    h1, h2, h3, p, span, label {{
-        color: #f5e6c8 !important;
-        letter-spacing: 1px;
+    h1 {{
+        font-family: 'Creepster', cursive !important;
+        color: #ffd280 !important;
+        letter-spacing: 4px !important;
+        text-shadow:
+            0 0 10px rgba(255, 180, 60, 0.3),
+            0 0 40px rgba(255, 120, 0, 0.15),
+            3px 3px 6px rgba(0, 0, 0, 0.8) !important;
+        font-size: 2.8rem !important;
+    }}
+
+    h2 {{
+        font-family: 'Creepster', cursive !important;
+        color: #e8c888 !important;
+        letter-spacing: 3px !important;
+        text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7) !important;
+        font-size: 1.8rem !important;
+    }}
+
+    h3 {{
+        font-family: 'Griffy', cursive !important;
+        color: #d4b878 !important;
+        letter-spacing: 2px !important;
+    }}
+
+    p, span, label, li {{
+        color: #d4c4a0 !important;
+        font-family: 'Griffy', 'Georgia', cursive !important;
+        font-size: 1.05rem !important;
     }}
 
     /* =========================
-       🎮 按钮风格（饥荒木质感）
+       🎮 按钮（饥荒木板/皮革感）
     ========================= */
     div[data-testid="stButton"] > button {{
         background: linear-gradient(
             180deg,
-            rgba(70, 55, 35, 0.95),
-            rgba(40, 30, 20, 0.95)
+            rgba(75, 58, 38, 0.95),
+            rgba(35, 25, 15, 0.98)
         ) !important;
-        
-        color: #f5e6c8 !important;
-        border: 1px solid rgba(255, 210, 120, 0.35) !important;
-        border-radius: 12px !important;
-        padding: 10px 20px !important;
-        font-size: 16px !important;
-        transition: all 0.2s ease !important;
-        box-shadow: 
-            inset 0 0 10px rgba(0,0,0,0.6), 
-            0 4px 10px rgba(0,0,0,0.4) !important;
-    }}
 
-    div[data-testid="stButton"] > button:hover {{
-        transform: scale(1.05);
-        background: linear-gradient(
-            180deg,
-            rgba(90, 70, 45, 0.98),
-            rgba(50, 35, 25, 0.98)
-        ) !important;
-        box-shadow: 0 0 15px rgba(255, 200, 120, 0.3) !important;
-        color: #fff !important;
-    }}
+        color: #ffd280 !important;
 
-    /* =========================
-       ⌨️ 输入框（生存笔记本风）
-    ========================= */
-    /* 覆盖 Streamlit 的所有文本输入组件 */
-    div[data-testid="stTextarea"] textarea, 
-    div[data-testid="stTextInput"] input {{
-        background-color: rgba(25, 20, 15, 0.9) !important;
-        color: #f5e6c8 !important;
-        border: 1px solid rgba(255, 220, 150, 0.3) !important;
-        border-radius: 10px !important;
-        box-shadow: inset 0 0 8px rgba(0,0,0,0.8) !important;
-    }}
+        border: 2px solid rgba(255, 190, 90, 0.3) !important;
+        border-radius: 8px !important;
 
-    /* =========================
-       💬 聊天气泡风格
-    ========================= */
-    .stChatMessage {{
-        background: rgba(40, 32, 22, 0.7) !important;
-        border: 1px solid rgba(255, 220, 150, 0.15) !important;
-        backdrop-filter: blur(8px);
-        border-radius: 15px !important;
-        color: #f5e6c8 !important;
-        margin-bottom: 10px !important;
-    }}
+        padding: 12px 24px !important;
 
-    /* =========================
-       📜 侧边栏（地图风格）
-    ========================= */
-    section[data-testid="stSidebar"] {{
-        background: rgba(15, 12, 10, 0.9) !important;
-        border-right: 1px solid rgba(255, 210, 120, 0.2) !important;
-    }}
+        font-family: 'Creepster', cursive !important;
+        font-size: 18px !important;
+        letter-spacing: 2px !important;
 
-    /* 隐藏 Streamlit 默认的水印和页脚 */
-    footer {{
-        visibility: hidden;
-    }}
+        transition: all 0.25s ease !important;
 
-    #MainMenu {{
-        visibility: hidden;
-    }}
-    </style>
-    """
+        box-shadow:
+            inset 0 0 15px rgba(0,0,0,0.7),
+            0 4px 15px rgba(0,0,0,0.5),
+            0 
