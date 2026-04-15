@@ -1,9 +1,9 @@
 import streamlit as st
 import os
-import base64
 import io
 import zipfile
 import requests
+import base64
 from datetime import datetime
 
 # ========================
@@ -28,97 +28,119 @@ if "final_design" not in st.session_state:
     st.session_state.final_design = ""
 
 # ========================
-# 📸 图片资源路径（修正为 demo/assets）
+# 📸 图片路径（GitHub Raw URL，自动可用）
 # ========================
 GITHUB_USER = "LETITIA-TAOBAO"
 GITHUB_REPO = "DON-T-STARVE-TOGETHER-MOD-generator"
-ASSETS_PATH = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/main/demo/assets/"
+
+# 先尝试本地读取（Streamlit Cloud 不支持），失败则用网络
+BASE_URL = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/main/demo/assets/"
 
 IMAGES = {
-    "bg": f"{ASSETS_PATH}background.jpg.png",
-    "btn_rapid": f"{ASSETS_PATH}btn_play.png",
-    "btn_explore": f"{ASSETS_PATH}btn_explore.png",
-    "btn_generate": f"{ASSETS_PATH}mod_generate.png",
-    "card_bg": f"{ASSETS_PATH}txt_box_bg.png"
+    "background": BASE_URL + "background.jpg.png",
+    "btn_rapid": BASE_URL + "btn_play.png",
+    "btn_explore": BASE_URL + "btn_explore.png",
+    "btn_generate": BASE_URL + "mod_generate.png",
+    "card_bg": BASE_URL + "txt_box_bg.png"
 }
 
 # ========================
-# 🎨 CSS 样式（完美适配所有图片）
+# 🎨 CSS 样式
 # ========================
 STYLES = f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Griffy&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap');
-
 /* ========== 全局背景 ========== */
 .stApp {{
-    background-image: url("{IMAGES['bg']}");
+    background-image: url("{IMAGES['background']}") !important;
     background-size: cover !important;
     background-position: center !important;
     background-attachment: fixed !important;
-    min-height: 100vh;
+    min-height: 100vh !important;
 }}
 
-html, body, [class*="css"] {{
+html, body, [class*="css"], .st-emotion-cache, .stAppViewContainer {{
     background-color: transparent !important;
+    background: transparent !important;
+    color: #F5E6C8 !important;
 }}
 
 .stApp::before {{
-    content: "";
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    z-index: -1;
-    background: linear-gradient(rgba(20,15,10,0.6), rgba(15,10,5,0.8));
+    content: "" !important;
+    position: fixed !important;
+    top: 0; left: 0; width: 100%; height: 100% !important;
+    z-index: -1 !important;
+    background: linear-gradient(rgba(20,15,10,0.6), rgba(15,10,5,0.8)) !important;
 }}
 
-h1, h2, h3 {{ font-family: 'Creepster' !important; color: #FFD700 !important; }}
-p, span, div, label {{ font-family: 'IM Fell English SC' !important; color: #F5E6C8 !important; }}
+/* ========== Banner ========== */
+.banner-box {{
+    background: rgba(30,20,10,0.75) !important;
+    border: 3px solid #A67C3B !important;
+    padding: 40px !important;
+    border-radius: 12px !important;
+    text-align: center !important;
+    margin: 30px auto !important;
+    max-width: 900px !important;
+    box-shadow: 0 0 40px rgba(0,0,0,0.8) !important;
+}}
 
-/* ========== ⭐⭐⭐⭐⭐ 模式选择按钮 ⭐⭐⭐⭐⭐ ========== */
+/* ========== ⭐⭐⭐⭐⭐ 自定义按钮 ⭐⭐⭐⭐⭐ ========== */
 .btn-mode-container {{
     display: flex !important;
-    gap: 40px !important;
     justify-content: center !important;
     align-items: center !important;
+    gap: 40px !important;
     margin: 40px auto !important;
     padding: 20px !important;
 }}
 
-.btn-mode-item {{
+.btn-item {{
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
 }}
 
-.btn-custom {{
+[data-testid="stButton"] > button {{
     width: 350px !important;
     height: 100px !important;
     border: none !important;
     background-size: cover !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
-    opacity: 0.9;
+    padding: 0 !important;
+    margin: 0 !important;
+    opacity: 0.95 !important;
     transition: all 0.3s ease !important;
     cursor: pointer !important;
     border-radius: 8px !important;
 }}
 
-.btn-custom:hover {{
+/* 设置两个按钮的图片 */
+#rapid_btn {{
+    background-image: url("{IMAGES['btn_rapid']}") !important;
+}}
+
+#explore_btn {{
+    background-image: url("{IMAGES['btn_explore']}") !important;
+}}
+
+[data-testid="stButton"] > button:hover {{
     transform: scale(1.05) translateY(-5px) !important;
     opacity: 1 !important;
-    filter: brightness(1.2);
+    filter: brightness(1.2) !important;
     box-shadow: 0 15px 40px rgba(0,0,0,0.7) !important;
 }}
 
-.btn-custom:active {{ transform: scale(0.98) !important; }}
+[data-testid="stButton"] > button:active {{
+    transform: scale(0.98) !important;
+}}
 
-/* ========== ⭐⭐⭐⭐⭐ 说明卡片（用对话框背景）⭐⭐⭐⭐⭐ ========== */
+/* ========== ⭐⭐⭐⭐⭐ 说明卡片 ⭐⭐⭐⭐⭐ ========== */
 .cards-row {{
     display: flex !important;
-    gap: 40px !important;
     justify-content: center !important;
     align-items: stretch !important;
+    gap: 40px !important;
     margin: 40px auto !important;
     padding: 20px !important;
     max-width: 1000px !important;
@@ -133,7 +155,7 @@ p, span, div, label {{ font-family: 'IM Fell English SC' !important; color: #F5E
     background-size: contain !important;
     background-repeat: no-repeat !important;
     background-position: center !important;
-    padding: 60px 30px 30px 30px !important; /* 留出边框空间 */
+    padding: 60px 40px 40px 40px !important;
     border-radius: 12px !important;
     transition: all 0.3s ease !important;
 }}
@@ -144,18 +166,24 @@ p, span, div, label {{ font-family: 'IM Fell English SC' !important; color: #F5E
 }}
 
 .card-title {{
-    font-family: Creepster !important;
+    font-family: 'Creepster', cursive !important;
     text-align: center !important;
     margin: 0 0 20px 0 !important;
     font-size: 1.8rem !important;
-    color: inherit !important;
 }}
 
-.card-rapid .card-title {{ color: #ffaa60 !important; text-shadow: 0 0 10px rgba(255,170,96,0.5); }}
-.card-explore .card-title {{ color: #aadd88 !important; text-shadow: 0 0 10px rgba(170,221,136,0.5); }}
+.card-rapid .card-title {{
+    color: #ffaa60 !important;
+    text-shadow: 0 0 10px rgba(255,170,96,0.5) !important;
+}}
+
+.card-explore .card-title {{
+    color: #aadd88 !important;
+    text-shadow: 0 0 10px rgba(170,221,136,0.5) !important;
+}}
 
 .card-text {{
-    font-family: "IM Fell English SC" !important;
+    font-family: 'IM Fell English SC', serif !important;
     font-size: 1rem !important;
     line-height: 1.8 !important;
     text-align: center !important;
@@ -171,32 +199,15 @@ p, span, div, label {{ font-family: 'IM Fell English SC' !important; color: #F5E
     margin-top: 10px !important;
 }}
 
-/* ========== Banner ========== */
-.banner-box {{
-    background: rgba(30,20,10,0.75) !important;
-    border: 3px solid #A67C3B !important;
-    padding: 40px !important;
-    border-radius: 12px !important;
-    text-align: center !important;
-    margin: 30px auto !important;
-    max-width: 900px !important;
-    box-shadow: 0 0 40px rgba(0,0,0,0.8) !important;
-}}
-
-/* ========== 聊天输入框 ========== */
+/* ========== Chat Input ========== */
 [data-testid="stChatInput"] textarea {{
     background-color: rgba(40,30,20,0.9) !important;
     border: 3px solid #8B4513 !important;
     color: #F5E6C8 !important;
-    font-family: 'IM Fell English SC' !important;
+    font-family: 'IM Fell English SC', serif !important;
     padding: 20px !important;
     min-height: 100px !important;
     border-radius: 8px !important;
-}}
-
-[data-testid="stChatInput"] textarea:focus {{
-    outline: none !important;
-    border-color: #FFA726 !important;
 }}
 
 /* ========== 侧边栏 ========== */
@@ -204,7 +215,10 @@ section[data-testid="stSidebar"] {{
     background: rgba(25,15,8,0.98) !important;
     border-right: 4px solid #8B4513 !important;
 }}
-section[data-testid="stSidebar"] * {{ color: #F5E6C8 !important; }}
+
+section[data-testid="stSidebar"] * {{
+    color: #F5E6C8 !important;
+}}
 
 /* ========== 聊天消息 ========== */
 .chat-message {{
@@ -220,7 +234,6 @@ section[data-testid="stSidebar"] * {{ color: #F5E6C8 !important; }}
     border-left: 4px solid #66BB6A !important;
 }}
 
-/* ========== 滚动条 ========== */
 ::-webkit-scrollbar {{ width: 8px !important; }}
 ::-webkit-scrollbar-thumb {{ background: #8B4513 !important; border-radius: 4px !important; }}
 </style>
@@ -234,7 +247,7 @@ st.markdown(STYLES, unsafe_allow_html=True)
 st.markdown('''
 <div class="banner-box">
 <h1 style="font-size:3.5rem;margin:0;text-shadow:0 0 25px rgba(255,215,0,0.6);">饥荒 MOD 生成器</h1>
-<p style="font-family:Griffy;color:#aa8855;font-size:1.4rem;letter-spacing:3px;margin-top:10px;">DON'T STARVE TOGETHER MOD GENERATOR</p>
+<p style="font-family:'Griffy',cursive;color:#aa8855;font-size:1.4rem;letter-spacing:3px;margin-top:10px;">DON'T STARVE TOGETHER MOD GENERATOR</p>
 <hr style="width:50%;border:none;border-top:2px solid #8B4513;margin:20px auto;">
 <p style="line-height:1.8;font-size:1.1rem;max-width:800px;margin:0 auto;">
 当理智归零，现实崩塌。<br>
@@ -244,23 +257,21 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 
 # ========================
-# ⭐⭐⭐⭐⭐ 模式选择按钮（并排显示）⭐⭐⭐⭐⭐
+# ⭐⭐⭐⭐⭐ 模式选择按钮（横向并排）⭐⭐⭐⭐⭐
 # ========================
 st.markdown('<div class="btn-mode-container">', unsafe_allow_html=True)
 
-st.markdown('<div class="btn-mode-item">', unsafe_allow_html=True)
+st.markdown('<div class="btn-item">', unsafe_allow_html=True)
 if st.button("", key="rapid_btn", use_container_width=True):
     st.session_state.mode = "rapid"
     st.session_state.messages = []
-    st.session_state.final_design = ""
     st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="btn-mode-item">', unsafe_allow_html=True)
+st.markdown('<div class="btn-item">', unsafe_allow_html=True)
 if st.button("", key="explore_btn", use_container_width=True):
     st.session_state.mode = "explore"
     st.session_state.messages = []
-    st.session_state.final_design = ""
     st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -269,14 +280,14 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ⭐⭐⭐⭐⭐ 说明卡片（横排 + 对话框背景）⭐⭐⭐⭐⭐
 st.markdown('<div class="cards-row">', unsafe_allow_html=True)
 
-st.markdown(f'''
+st.markdown('''
 <div class="card-item card-rapid">
     <h3 class="card-title">🔥 意志铸剑者</h3>
     <p class="card-text">当你已明晰 Mod 的核心法则与物品灵魂<br>无需徘徊于暗影之间<br>将你的疯狂构想直接锻造成可触及的现实<br><br><span class="card-english">For when your vision is clear. Forge it now.</span></p>
 </div>
 ''', unsafe_allow_html=True)
 
-st.markdown(f'''
+st.markdown('''
 <div class="card-item card-explore">
     <h3 class="card-title">👁️ 迷雾探路者</h3>
     <p class="card-text">当灵感如迷雾般在你脑海中低语<br>混沌尚未凝聚成形<br>与暗影对话，在反复试探中让疯狂的蓝图逐渐清晰<br><br><span class="card-english">For when inspiration is foggy. Talk to the Shadow.</span></p>
@@ -310,12 +321,9 @@ def generate_icon_with_pollinations(prompt):
     try:
         if not prompt or len(prompt) < 5:
             return {"success": False, "error": "无效的 Prompt"}
-        
         encoded = prompt.replace(" ", "+").replace("&", "%26")
         url = f"https://image.pollinations.ai/prompt/{encoded}?width=512&height=512&nologo=true&seed={int(datetime.now().timestamp())}"
-        
         response = requests.get(url, timeout=45)
-        
         if response.status_code == 200 and len(response.content) > 1000:
             return {
                 "success": True,
@@ -329,22 +337,21 @@ def generate_icon_with_pollinations(prompt):
 
 def create_mod_zip(mod_data):
     zip_buffer = io.BytesIO()
-    
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         files = mod_data.get('all_files', {})
-        
         for filename, content in files.items():
             if isinstance(content, str):
                 zip_file.writestr(filename, content.encode('utf-8'))
             elif isinstance(content, bytes):
                 zip_file.writestr(filename, content)
-        
         for directory in ["sounds/", "images/", "animations/"]:
             zip_file.writestr(directory, "")
-    
     zip_buffer.seek(0)
     return zip_buffer.getvalue()
 
+# ========================
+# 探索模式 - 多轮对话 + 生成确认
+# ========================
 if st.session_state.mode == "explore":
     st.write("💬 **与暗影设计助手对话以明确设计思路**")
     
@@ -353,26 +360,17 @@ if st.session_state.mode == "explore":
         st.session_state.messages.append({"role": "user", "content": user_input})
         st.rerun()
     
-    # ⭐⭐⭐⭐⭐ 生成按钮（用 mod_generate.png）⭐⭐⭐⭐⭐
+    # ⭐⭐⭐⭐⭐ 生成按钮（对话≥2 条后出现）⭐⭐⭐⭐⭐
     if len(st.session_state.messages) >= 2:
         st.markdown("---")
         st.markdown("<div style='text-align:center;margin:30px 0;'>", unsafe_allow_html=True)
-        st.markdown(f'''
-        <div style="display:flex;justify-content:center;">
-            <button onclick="document.getElementById('gen-btn').click()" 
-                    style="width:400px;height:100px;border:none;background:url('{IMAGES['btn_generate']}') center/cover;opacity:0.9;cursor:pointer;border-radius:8px;transition:all 0.3s;"
-                    onmouseover="this.style.opacity=1;this.style.transform='scale(1.05)'"
-                    onmouseout="this.style.opacity=0.9;this.style.transform='scale(1)'">
-            </button>
-        </div>
-        <button id="gen-btn" style="display:none;"></button>
-        ''', unsafe_allow_html=True)
         
-        if st.session_state.messages[-1]['content'].lower() in ['生成', '生成 mod', 'generate', 'yes']:
+        if st.button("✨ 生成最终 Mod", key="gen_from_explore", use_container_width=True):
             summary = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
             st.session_state.final_design = summary
             st.session_state.mode = "generating"
             st.rerun()
+        
         st.markdown("</div>", unsafe_allow_html=True)
 
 elif st.session_state.mode == "rapid":
@@ -387,7 +385,7 @@ elif st.session_state.mode == "rapid":
 # ⏳ 生成阶段
 # ========================
 if st.session_state.mode == "generating":
-    st.markdown("<div style='text-align:center;padding:40px;'><h2 style='font-family:Creepster;font-size:2.5rem;color:#FFD700;'>世界正在扭曲......</h2><p style='margin-top:20px;'>The shadows are weaving your madness...</p></div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center;padding:40px;'><h2 style='font-family:Creepster;font-size:2.5rem;color:#FFD700;'>世界正在扭曲......</h2><p>The shadows are weaving your madness...</p></div>", unsafe_allow_html=True)
     
     progress_bar = st.progress(0)
     
@@ -417,10 +415,7 @@ if st.session_state.mode == "generating":
     
     progress_bar.progress(100)
     
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": result.get('text', '已完成')
-    })
+    st.session_state.messages.append({"role": "assistant", "content": result.get('text', '已完成')})
     
     mod_data = result.get('data', {})
     if mod_data:
