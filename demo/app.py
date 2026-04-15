@@ -1,7 +1,6 @@
 import streamlit as st
 import re
 import json
-from openai import OpenAI
 
 # =========================
 # 🔑 初始化
