@@ -1,134 +1,113 @@
 def inject_theme(bg_base64=None):
-    """注入全局主题样式"""
-    if bg_base64:
-        bg_image = f'url("data:image/png;base64,{bg_base64}")'
-    else:
-        bg_image = 'url("https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?auto=format&fit=crop&w=2073&q=80")'
+    """注入全局主题 - 放在最前面"""
     
-    return f"""
+    if bg_base64:
+        bg_img = f'data:image/png;base64,{bg_base64}'
+    else:
+        bg_img = 'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?auto=format&fit=crop&w=2073&q=80'
+    
+    return f'''
     <style>
-    /* 字体导入 */
+    /* ========== 字体导入 ========== */
     @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Griffy&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap');
     
+    /* ========== 全局变量 ========== */
     :root {{
-        --thorn-color: #8B4513;
-        --highlight: #FFD700;
+        --thorn-brown: #8B4513;
+        --highlight-gold: #FFD700;
+        --dark-bg: rgba(15, 10, 5, 0.9);
         --text-primary: #F5E6C8;
-        --border-color: #A67C3B;
+        --border-gold: #A67C3B;
+        --orange-glow: #ffaa60;
+        --green-glow: #66aa66;
     }}
     
-    /* 关键修复：确保背景覆盖全屏 */
+    /* ========== 关键：强制透明背景 ========== */
     .stApp {{
-        background: linear-gradient(rgba(10, 6, 3, 0.85), rgba(8, 4, 2, 0.95)), {bg_image};
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-        color: var(--text-primary);
+        background: 
+            linear-gradient(rgba(10, 6, 3, 0.8), rgba(5, 4, 2, 0.9)),
+            url('{bg_img}');
+        background-size: cover !important;
+        background-position: center !important;
+        background-attachment: fixed !important;
+        color: var(--text-primary) !important;
         font-family: 'IM Fell English SC', serif !important;
-        position: relative;
-        overflow-x: hidden;
+        position: relative !important;
     }}
     
-    /* 背景纹理叠加 */
-    .stApp::before {{
-        content: "";
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.05) 10px, rgba(0,0,0,0.05) 20px);
-        pointer-events: none; z-index: 0;
-    }}
-    
-    /* 隐藏默认元素 */
-    header, #MainMenu, footer, [data-testid="stHeader"] {{
+    /* 隐藏 Streamlit 默认元素 */
+    header, footer, #MainMenu, [data-testid="stHeader"] {{
         display: none !important;
     }}
     
-    /* 关键修复：容器透明 */
+    /* 关键：容器透明 */
     [data-testid="stAppViewContainer"] {{
         background-color: transparent !important;
-        padding-top: 20px !important;
-        position: relative; z-index: 1;
+        padding: 0 !important;
     }}
     
-    [data-testid="stBlockWrapper"] {{
-        background-color: transparent !important;
-        position: relative; z-index: 1;
-    }}
-    
-    /* 关键修复：对话框深色背景 */
-    [data-testid="stChatInput"] textarea {{
-        background-color: rgba(25, 20, 15, 0.95) !important;
-        color: var(--text-primary) !important;
-        font-family: 'IM Fell English SC', serif !important;
-        font-size: 16px !important;
-        border: 2px solid var(--border-color) !important;
-        border-radius: 8px !important;
-        padding: 15px !important;
-        min-height: 80px !important;
-    }}
-    
-    [data-testid="stChatInput"] textarea:focus {{
-        outline: none !important;
-        border-color: #FFD700 !important;
-    }}
-    
-    /* 关键修复：侧边栏样式 */
+    /* 侧边栏样式 */
     section[data-testid="stSidebar"] {{
-        background: rgba(30, 20, 10, 0.98) !important;
-        border-right: 3px solid var(--border-color) !important;
-        backdrop-filter: blur(10px);
+        background: rgba(25, 15, 8, 0.95) !important;
+        border-right: 2px solid var(--border-gold) !important;
     }}
     
     section[data-testid="stSidebar"] * {{
         color: var(--text-primary) !important;
     }}
     
-    section[data-testid="stSidebar"] h3,
-    section[data-testid="stSidebar"] p,
-    section[data-testid="stSidebar"] span,
-    section[data-testid="stSidebar"] div {{
-        color: var(--text-primary) !important;
-    }}
-    
-    section[data-testid="stSidebar"] button {{
-        background: rgba(40, 30, 20, 0.8) !important;
-        color: #FFD700 !important;
-        border: 1px solid var(--border-color) !important;
-    }}
-    
-    /* 按钮样式 */
+    /* ========== 按钮荆棘风格 ========== */
     div[data-testid="stButton"] > button {{
         font-family: 'Creepster', cursive !important;
-        font-size: 20px !important;
+        font-size: 18px !important;
         font-weight: bold !important;
         letter-spacing: 2px !important;
-        line-height: 1.3 !important;
-        padding: 20px 15px !important;
-        background: linear-gradient(180deg, #3A2E1D, #1A120B) !important;
-        color: #FFD700 !important;
-        border: 3px solid var(--border-color) !important;
+        padding: 18px 12px !important;
+        background: linear-gradient(180deg, #3a2e1d, #1a120b) !important;
+        color: var(--highlight-gold) !important;
+        border: 3px solid var(--thorn-brown) !important;
         border-radius: 0 !important;
-        box-shadow: 0 0 15px rgba(255, 170, 96, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.7) !important;
+        box-shadow: 0 0 15px rgba(255, 170, 96, 0.3), inset 0 0 20px rgba(0,0,0,0.7) !important;
         transition: all 0.3s ease !important;
-        text-align: center !important;
-        min-height: 80px !important;
+        position: relative !important;
+    }}
+    
+    div[data-testid="stButton"] > button::before {{
+        content: "✦";
+        position: absolute;
+        top: 5px; left: 10px;
+        color: var(--thorn-brown);
+        font-size: 20px;
     }}
     
     div[data-testid="stButton"] > button:hover {{
         transform: scale(1.05) !important;
-        box-shadow: 0 0 30px rgba(255, 170, 96, 0.5) !important;
+        box-shadow: 0 0 25px rgba(255, 170, 96, 0.5) !important;
         color: #FFF !important;
-        border-color: #FFD700 !important;
+    }}
+    
+    /* ========== 聊天框深色背景 ========== */
+    [data-testid="stChatInput"] textarea {{
+        background-color: rgba(20, 15, 10, 0.95) !important;
+        color: var(--text-primary) !important;
+        border: 2px solid var(--border-gold) !important;
+        border-radius: 8px !important;
+        font-family: 'IM Fell English SC', serif !important;
+        padding: 12px !important;
+        min-height: 70px !important;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.5) !important;
+    }}
+    
+    [data-testid="stChatInput"] textarea:focus {{
+        outline: none !important;
+        border-color: var(--highlight-gold) !important;
     }}
     
     /* 滚动条 */
     ::-webkit-scrollbar {{ width: 8px !important; }}
     ::-webkit-scrollbar-track {{ background: rgba(10, 6, 3, 0.8) !important; }}
-    ::-webkit-scrollbar-thumb {{
-        background: rgba(166, 124, 59, 0.4) !important;
-        border-radius: 4px !important;
-    }}
+    ::-webkit-scrollbar-thumb {{ background: rgba(166, 124, 59, 0.4) !important; border-radius: 4px !important; }}
     </style>
-    """
+    '''
