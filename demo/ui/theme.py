@@ -44,9 +44,6 @@ def inject_theme(bg_base64=None):
         display: none !important;
     }
 
-    /* =========================
-       🎭 双语标题样式
-    ========================= */
     h2 {
         font-family: 'Creepster', cursive !important;
         color: #e8c888 !important;
@@ -68,9 +65,6 @@ def inject_theme(bg_base64=None):
         font-size: 1.05rem !important;
     }
 
-    /* =========================
-       🎮 双语按钮（中文大，英文小）
-    ========================= */
     div[data-testid="stButton"] > button {
         background: linear-gradient(
             180deg,
@@ -98,6 +92,7 @@ def inject_theme(bg_base64=None):
         transform: skew(-2deg);
         transition: all 0.3s ease !important;
         line-height: 1.4 !important;
+        white-space: pre-line !important;
     }
 
     div[data-testid="stButton"] > button:hover {
@@ -124,23 +119,30 @@ def inject_theme(bg_base64=None):
             inset 0 0 30px rgba(0,0,0,0.8) !important;
     }
 
-    /* 按钮内英文副标题样式 */
-    .btn-subtitle {
-        display: block;
-        font-size: 11px !important;
-        color: rgba(200, 180, 140, 0.7) !important;
-        letter-spacing: 1px !important;
-        font-weight: normal !important;
-        margin-top: 2px !important;
-        text-transform: uppercase !important;
+    div[data-testid="stButton"] > button::before,
+    div[data-testid="stButton"] > button::after {
+        content: "🌿" !important;
+        position: absolute !important;
+        font-size: 24px !important;
+        opacity: 0.4 !important;
+        filter: grayscale(100%) brightness(0.6) contrast(1.2) !important;
+        z-index: -1 !important;
     }
 
-    /* =========================
-       🗡️ 输入框双语样式
-    ========================= */
+    div[data-testid="stButton"] > button::before {
+        top: -8px !important;
+        left: -5px !important;
+        transform: rotate(-45deg) !important;
+    }
+
+    div[data-testid="stButton"] > button::after {
+        bottom: -8px !important;
+        right: -5px !important;
+        transform: rotate(135deg) !important;
+    }
+
     div[data-testid="stTextArea"] textarea,
-    div[data-testid="stTextInput"] input,
-    [data-testid="stChatInput"] textarea {
+    div[data-testid="stTextInput"] input {
         background-color: rgba(20, 16, 10, 0.85) !important;
         color: #f5e6c8 !important;
         border: 1px solid rgba(100, 80, 40, 0.6) !important;
@@ -162,9 +164,6 @@ def inject_theme(bg_base64=None):
         font-style: italic !important;
     }
 
-    /* =========================
-       💬 聊天气泡
-    ========================= */
     .stChatMessage {
         background: rgba(25, 20, 12, 0.8) !important;
         border: 1px solid rgba(100, 80, 40, 0.25) !important;
@@ -212,6 +211,13 @@ def inject_theme(bg_base64=None):
         background-color: transparent !important;
     }
 
+    [data-testid="stChatInput"] textarea {
+        background-color: rgba(25, 20, 12, 0.95) !important;
+        color: #f5e6c8 !important;
+        border: 1px solid rgba(80, 120, 40, 0.3) !important;
+        font-family: 'Griffy', cursive !important;
+    }
+
     [data-testid="stChatInput"] button {
         background-color: rgba(60, 45, 30, 0.9) !important;
         border: 1px solid rgba(255, 180, 80, 0.3) !important;
@@ -257,60 +263,6 @@ def inject_theme(bg_base64=None):
 
     ::-webkit-scrollbar-thumb:hover {
         background: rgba(140, 110, 60, 0.8);
-    }
-
-    /* =========================
-       ⏳ 加载动画样式
-    ========================= */
-    .dont-starve-loader {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 40px;
-        background: rgba(10, 8, 5, 0.9);
-        border: 2px solid rgba(100, 80, 40, 0.4);
-        border-radius: 8px;
-        box-shadow: 
-            0 0 30px rgba(0,0,0,0.8),
-            inset 0 0 20px rgba(255, 150, 50, 0.05);
-    }
-
-    .loading-zh {
-        font-family: 'Creepster', cursive;
-        color: #ffd280;
-        font-size: 1.6rem;
-        letter-spacing: 4px;
-        text-shadow: 0 0 20px rgba(255, 150, 0, 0.5);
-        margin-bottom: 4px;
-    }
-
-    .loading-en {
-        font-family: 'Griffy', cursive;
-        color: rgba(200, 180, 140, 0.7);
-        font-size: 0.9rem;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-    }
-
-    /* =========================
-       🎯 模式指示器双语
-    ========================= */
-    .mode-indicator-zh {
-        font-family: 'Creepster', cursive;
-        color: #ffd280;
-        font-size: 1.4rem;
-        letter-spacing: 4px;
-        text-shadow: 0 0 15px rgba(255, 150, 0, 0.4);
-    }
-
-    .mode-indicator-en {
-        font-family: 'Griffy', cursive;
-        color: rgba(200, 180, 140, 0.6);
-        font-size: 0.85rem;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin-top: 2px;
     }
     </style>
     """
