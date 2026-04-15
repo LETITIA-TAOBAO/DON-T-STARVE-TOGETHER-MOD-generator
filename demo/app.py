@@ -1,201 +1,295 @@
 import streamlit as st
-import sys
-import os
-import base64
-import traceback
-import time
 
-# =========================
-# 路径设置
-# =========================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, BASE_DIR)
 
-# =========================
-# LLM导入
-# =========================
-try:
-    from qwen_client import design_with_llm, explore_with_llm
-except Exception:
-    st.error("LLM模块加载失败 / MODULE LOAD FAILED")
-    st.error(traceback.format_exc())
-    st.stop()
-
-from ui.theme import inject_theme
-from ui.components import render_banner, render_chat, render_loading, render_mode_indicator
-
-# =========================
-# 页面配置
-# =========================
-st.set_page_config(page_title="AI Mod Generator", layout="wide")
-
-# =========================
-# 背景图处理
-# =========================
-def get_base64_image(path):
-    try:
-        with open(path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    except:
-        return ""
-
-bg_base64 = get_base64_image(os.path.join(BASE_DIR, "封面图.png"))
-
-# =========================
-# Theme注入
-# =========================
-if bg_base64:
-    st.markdown(inject_theme(bg_base64), unsafe_allow_html=True)
-
-# =========================
-# Session State
-# =========================
-if "mode" not in st.session_state:
-    st.session_state.mode = "home"
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "final_input" not in st.session_state:
-    st.session_state.final_input = None
-
-# =========================
-# 中央Banner（双语标题）
-# =========================
-render_banner()
-
-# =========================
-# 模式选择区域（双语按钮）
-# =========================
-st.markdown("""
-<h2 style="margin-bottom: 5px;">选择模式</h2>
-<p style="font-size: 0.9rem; color: rgba(200,180,140,0.6); margin-top: 0; letter-spacing: 2px; font-family: 'Griffy', cursive;">
-    SELECT MODE
-</p>
-""", unsafe_allow_html=True)
-
-# 模式指示器
-if st.session_state.mode == "fast":
-    render_mode_indicator("快速生成", "FAST GENERATION")
-elif st.session_state.mode == "explore":
-    render_mode_indicator("探索设计", "EXPLORE DESIGN")
-
-col1, col2 = st.columns(2)
-
-# 双语按钮：使用HTML实现中文+英文副标题
-with col1:
-    is_active = st.session_state.mode == "fast"
-    btn_style = "primary" if is_active else "secondary"
-    
-    # 使用HTML按钮内容
-    if st.button(
-        "快速生成\nFAST GENERATION", 
-        use_container_width=True, 
-        type=btn_style,
-        help="直接生成完整方案 / Generate complete design directly"
-    ):
-        st.session_state.mode = "fast"
-        st.session_state.messages = []
-        st.rerun()
-
-with col2:
-    is_active = st.session_state.mode == "explore"
-    btn_style = "primary" if is_active else "secondary"
-    
-    if st.button(
-        "探索设计\nEXPLORE DESIGN", 
-        use_container_width=True, 
-        type=btn_style,
-        help="对话式逐步完善 / Iterative design through conversation"
-    ):
-        st.session_state.mode = "explore"
-        st.session_state.messages = []
-        st.rerun()
-
-# =========================
-# HOME 模式（双语）
-# =========================
-if st.session_state.mode == "home":
-    st.info("请选择一个模式开始设计你的 Mod\n\nPlease select a mode to start designing your Mod")
-
-# =========================
-# FAST MODE（双语）
-# =========================
-elif st.session_state.mode == "fast":
+def render_banner():
     st.markdown("""
-    <h3 style="margin-bottom: 5px;">🚀 快速生成模式</h3>
-    <p style="font-size: 0.9rem; color: rgba(200,180,140,0.6); margin-top: 0; letter-spacing: 1px;">
-        FAST GENERATION MODE
-    </p>
+    <div style="
+        background: linear-gradient(
+            180deg,
+            rgba(25, 20, 12, 0.9),
+            rgba(15, 12, 8, 0.95)
+        );
+        border: 2px solid rgba(100, 80, 40, 0.4);
+        border-top: 3px solid rgba(120, 90, 50, 0.5);
+        border-bottom: 3px solid rgba(80, 60, 30, 0.6);
+        box-shadow:
+            0 0 40px rgba(0,0,0,0.6),
+            inset 0 0 30px rgba(0,0,0,0.4),
+            0 0 15px rgba(80, 120, 40, 0.1);
+        border-radius: 8px;
+        padding: 40px 30px;
+        margin: 20px auto 40px auto;
+        max-width: 800px;
+        text-align: center;
+        position: relative;
+    ">
+        <div style="position: absolute; top: -10px; left: -10px; font-size: 30px; opacity: 0.5; filter: grayscale(100%) brightness(0.7); transform: rotate(-45deg);">🌿</div>
+        <div style="position: absolute; top: -10px; right: -10px; font-size: 30px; opacity: 0.5; filter: grayscale(100%) brightness(0.7); transform: rotate(45deg);">🌿</div>
+        <div style="position: absolute; bottom: -10px; left: -10px; font-size: 30px; opacity: 0.5; filter: grayscale(100%) brightness(0.7); transform: rotate(-135deg);">🌿</div>
+        <div style="position: absolute; bottom: -10px; right: -10px; font-size: 30px; opacity: 0.5; filter: grayscale(100%) brightness(0.7); transform: rotate(135deg);">🌿</div>
+        
+        <h1 style="
+            font-family: 'Creepster', cursive;
+            color: #ffd280;
+            font-size: 3.2rem;
+            margin: 0 0 5px 0;
+            text-shadow:
+                0 0 20px rgba(255, 150, 0, 0.4),
+                0 0 40px rgba(255, 100, 0, 0.2),
+                3px 3px 6px rgba(0,0,0,0.9);
+            letter-spacing: 6px;
+        ">饥荒MOD生成器</h1>
+        
+        <p style="
+            font-family: 'Creepster', cursive;
+            color: rgba(200, 160, 100, 0.9);
+            font-size: 1.2rem;
+            margin: 0 0 20px 0;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        ">Don't Starve Together Mod Generator</p>
+        
+        <div style="
+            width: 60%;
+            height: 2px;
+            margin: 0 auto 25px auto;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(100, 140, 60, 0.4),
+                rgba(180, 140, 80, 0.4),
+                rgba(100, 140, 60, 0.4),
+                transparent
+            );
+        "></div>
+        
+        <p style="
+            font-family: 'Griffy', cursive;
+            color: rgba(220, 200, 160, 0.95);
+            font-size: 1.15rem;
+            line-height: 1.8;
+            margin: 0 0 15px 0;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        ">
+            当理智值归零，暗影生物在篝火边缘游荡，真正的造物主开始苏醒。<br>
+            这里不是工坊，而是<span style="color: #ffaa60;">禁忌知识的祭坛</span>。<br>
+            用代码编织噩梦，在生存与毁灭的边界创造疯狂。
+        </p>
+        
+        <p style="
+            font-family: 'Griffy', cursive;
+            color: rgba(180, 160, 120, 0.7);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            font-style: italic;
+            max-width: 600px;
+            margin: 0 auto;
+            letter-spacing: 1px;
+        ">
+            When sanity reaches zero, and shadow creatures lurk by the campfire,<br>
+            the true creator awakens. This is not a workshop, but an altar of forbidden knowledge.<br>
+            Weave nightmares with code, create madness on the edge of survival and destruction.
+        </p>
+    </div>
     """, unsafe_allow_html=True)
-    
-    st.caption("直接描述你的想法，AI将立即为你生成完整设计方案\nDescribe your idea, AI will generate complete design immediately")
-    
-    user_input = st.text_area(
-        "描述你的Mod想法 / Describe Your Mod Idea", 
-        placeholder="比如：一个能在月圆之夜变身的狼人角色，拥有独特的饥饿机制...\n\nExample: A werewolf character that transforms during full moon with unique hunger mechanics...",
-        height=150
-    )
 
-    if st.button("开始生成\nSTART GENERATION", type="primary"):
-        if user_input.strip():
-            render_loading("正在生成世界...", "GENERATING WORLD...")
-            
-            try:
-                result = design_with_llm(user_input)
-                display_text = result["text"] if isinstance(result, dict) else result
-                
-                st.markdown("""
-                <h3 style="margin-bottom: 5px;">📝 设计方案</h3>
-                <p style="font-size: 0.9rem; color: rgba(200,180,140,0.6); margin-top: 0; letter-spacing: 1px;">
-                    DESIGN PROPOSAL
-                </p>
-                """, unsafe_allow_html=True)
-                
-                st.markdown(display_text)
-                st.success("✨ 生成完成！ / GENERATION COMPLETE!")
-                
-            except Exception as e:
-                st.error("生成失败 / GENERATION FAILED")
-                st.code(traceback.format_exc())
+
+def render_chat(messages):
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+
+        if role == "user":
+            icon = "🧑‍💻"
+            bg = "rgba(40, 30, 18, 0.75)"
+            border_left = "4px solid rgba(180, 140, 80, 0.4)"
+            name_zh = "求生者"
+            name_en = "SURVIVOR"
+            color = "#e8c888"
         else:
-            st.warning("请输入你的想法后再生成哦！\nPlease enter your idea before generating!")
+            icon = "👁️"
+            bg = "rgba(25, 20, 12, 0.8)"
+            border_left = "4px solid rgba(80, 120, 40, 0.5)"
+            name_zh = "暗影设计师"
+            name_en = "SHADOW DESIGNER"
+            color = "#a8d080"
 
-# =========================
-# EXPLORE MODE（双语）
-# =========================
-elif st.session_state.mode == "explore":
-    st.markdown("""
-    <h3 style="margin-bottom: 5px;">🧠 探索设计模式</h3>
-    <p style="font-size: 0.9rem; color: rgba(200,180,140,0.6); margin-top: 0; letter-spacing: 1px;">
-        EXPLORE DESIGN MODE
-    </p>
-    """, unsafe_allow_html=True)
-    
-    st.caption("与AI对话，逐步完善你的Mod设计\nChat with AI to gradually refine your mod design")
-    
-    render_chat(st.session_state.messages)
-    
-        if user_input:
-        st.session_state.messages.append({
-            "role": "user",
-            "content": user_input
-        })
+        st.markdown(f"""
+        <div style="
+            background: {bg};
+            border: 1px solid rgba(100, 80, 40, 0.25);
+            border-left: {border_left};
+            border-radius: 4px;
+            padding: 15px 18px;
+            margin-bottom: 12px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.4);
+            position: relative;
+        ">
+            <div style="
+                font-family: 'Creepster', cursive;
+                color: {color};
+                font-size: 0.9rem;
+                margin-bottom: 8px;
+                letter-spacing: 2px;
+                opacity: 0.9;
+            ">
+                {icon} {name_zh} <span style="font-size: 0.7rem; opacity: 0.6; margin-left: 8px;">{name_en}</span>
+            </div>
+            <div style="
+                color: #e0d0b0;
+                font-family: 'Griffy', cursive;
+                font-size: 1rem;
+                line-height: 1.6;
+            ">{content}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+def render_loading(zh_text="正在生成世界...", en_text="GENERATING WORLD..."):
+    loading_html = f"""
+    <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 50px;
+        background: linear-gradient(
+            180deg,
+            rgba(20, 16, 10, 0.95),
+            rgba(10, 8, 5, 0.98)
+        );
+        border: 2px solid rgba(100, 80, 40, 0.5);
+        border-radius: 8px;
+        margin: 30px auto;
+        max-width: 500px;
+        box-shadow: 
+            0 0 40px rgba(0,0,0,0.8),
+            inset 0 0 30px rgba(255, 150, 50, 0.05);
+        position: relative;
+        overflow: hidden;
+    ">
+        <div style="position: absolute; top: 5px; left: 5px; font-size: 20px; opacity: 0.3; filter: grayscale(100%);">🌿</div>
+        <div style="position: absolute; top: 5px; right: 5px; font-size: 20px; opacity: 0.3; filter: grayscale(100%); transform: scaleX(-1);">🌿</div>
+        <div style="position: absolute; bottom: 5px; left: 5px; font-size: 20px; opacity: 0.3; filter: grayscale(100%); transform: scaleY(-1);">🌿</div>
+        <div style="position: absolute; bottom: 5px; right: 5px; font-size: 20px; opacity: 0.3; filter: grayscale(100%); transform: scale(-1, -1);">🌿</div>
         
-        with st.spinner(""):
-            col1, col2, col3 = st.columns([1,2,1])
-            with col2:
-                render_loading("暗影正在凝聚...", "SHADOWS GATHERING...")
-            
-            time.sleep(0.5)
-            
-            try:
-                reply_obj = explore_with_llm(st.session_state.messages)
-                reply_text = reply_obj["text"] if isinstance(reply_obj, dict) else reply_obj
-            except Exception:
-                # 使用 f-string 避免换行错误
-                reply_text = f"❌ 对话失败 / CHAT FAILED: {traceback.format_exc()}"
+        <div style="
+            width: 70px;
+            height: 70px;
+            border: 3px solid rgba(100, 80, 40, 0.3);
+            border-top: 3px solid #ffd280;
+            border-radius: 50%;
+            animation: spin 2s linear infinite;
+            box-shadow: 0 0 20px rgba(255, 150, 0, 0.3);
+            position: relative;
+        ">
+            <div style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 30px;
+                animation: counter-spin 2s linear infinite;
+            ">🌙</div>
+        </div>
         
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": reply_text
-        })
-        st.rerun()
+        <style>
+        @keyframes spin {{
+            0% {{ transform: rotate(0deg); }}
+            100% {{ transform: rotate(360deg); }}
+        }}
+        @keyframes counter-spin {{
+            0% {{ transform: translate(-50%, -50%) rotate(0deg); }}
+            100% {{ transform: translate(-50%, -50%) rotate(-360deg); }}
+        }}
+        </style>
+        
+        <p style="
+            margin-top: 25px;
+            font-family: 'Creepster', cursive;
+            color: #ffd280;
+            font-size: 1.6rem;
+            letter-spacing: 4px;
+            text-shadow: 0 0 20px rgba(255, 150, 0, 0.5);
+            margin-bottom: 5px;
+        ">
+            {zh_text}
+        </p>
+        
+        <p style="
+            font-family: 'Griffy', cursive;
+            color: rgba(200, 180, 140, 0.7);
+            font-size: 0.9rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin: 0;
+        ">
+            {en_text}
+        </p>
+        
+        <p style="
+            margin-top: 15px;
+            font-family: 'Griffy', cursive;
+            color: rgba(180, 160, 120, 0.5);
+            font-size: 0.85rem;
+            font-style: italic;
+        ">
+            请不要熄灭篝火 / Don't let the fire die
+        </p>
+    </div>
+    """
+    st.markdown(loading_html, unsafe_allow_html=True)
+
+
+def render_mode_indicator(zh_mode, en_mode):
+    indicator_html = f"""
+    <div style="
+        background: linear-gradient(
+            90deg,
+            rgba(80, 60, 30, 0.4),
+            rgba(120, 90, 40, 0.6),
+            rgba(80, 60, 30, 0.4)
+        );
+        border: 1px solid rgba(255, 180, 80, 0.3);
+        border-left: 4px solid #ffd280;
+        border-right: 4px solid #ffd280;
+        padding: 15px 24px;
+        margin: 20px 0;
+        text-align: center;
+        box-shadow: 
+            0 4px 15px rgba(0,0,0,0.4),
+            inset 0 0 20px rgba(0,0,0,0.3);
+        animation: glow 2s ease-in-out infinite alternate;
+    ">
+        <div style="
+            font-family: 'Creepster', cursive;
+            color: #ffd280;
+            font-size: 1.4rem;
+            letter-spacing: 4px;
+            text-shadow: 0 0 15px rgba(255, 150, 0, 0.4);
+            margin-bottom: 4px;
+        ">
+            ⚡ {zh_mode} ⚡
+        </div>
+        <div style="
+            font-family: 'Griffy', cursive;
+            color: rgba(200, 180, 140, 0.6);
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        ">
+            {en_mode}
+        </div>
+    </div>
+    <style>
+    @keyframes glow {{
+        from {{ box-shadow: 0 4px 15px rgba(0,0,0,0.4), inset 0 0 20px rgba(0,0,0,0.3); }}
+        to {{ box-shadow: 0 4px 25px rgba(255, 150, 0, 0.2), inset 0 0 20px rgba(0,0,0,0.3); }}
+    }}
+    </style>
+    """
+    st.markdown(indicator_html, unsafe_allow_html=True)
