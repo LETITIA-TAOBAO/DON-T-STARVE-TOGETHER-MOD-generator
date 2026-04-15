@@ -13,10 +13,10 @@ import zipfile
 try:
     from qwen_client import design_with_llm, explore_with_llm
 except Exception as e:
-    print(f"[WARN] LLM load failed, using mock")
+    print(f"[WARN] LLM load failed")
     
     def mock_explore(messages):
-        return {"text": f"👁️ Shadow responds to you... Your idea about '{messages[-1]['content'][:20]}...' is interesting!", "data": None}
+        return {"text": f"👁️ Shadow responds... Your idea '{messages[-1]['content'][:20]}...' is interesting!", "data": None}
     
     def mock_design(idea):
         return {
@@ -34,7 +34,7 @@ except Exception as e:
 
 
 # ========================
-# 🎨 主题 CSS (必须最前面注入)
+# 🎨 主题 CSS - 超强力覆盖白底
 # ========================
 def inject_theme_css(bg_url):
     css = f"""
@@ -48,15 +48,23 @@ def inject_theme_css(bg_url):
         --highlight-gold: #FFD700;
         --text-primary: #F5E6C8;
         --border-gold: #A67C3B;
+        --black-bg: rgba(0, 0, 0, 0);
     }}
     
-    /* 强制全黑背景 */
-    html, body, .stApp, [class*="css"], [data-testid="stAppViewContainer"], [data-testid="stBlockContainer"] {{
-        background-color: rgba(0,0,0,1) !important;
+    /* ===== 核心：强制所有容器透明 ===== */
+    html, body {{
+        background-color: transparent !important;
+        color: var(--text-primary) !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }}
+    
+    .stApp, [class*="css"], .st-emotion-cache, [data-testid="stApp"] {{
+        background-color: transparent !important;
         background: transparent !important;
     }}
     
-    /* 背景图层 */
+    /* ===== 背景图层 ===== */
     body::before {{
         content: "" !important;
         position: fixed !important;
@@ -66,24 +74,73 @@ def inject_theme_css(bg_url):
         filter: contrast(1.08) brightness(0.88) !important;
     }}
     
-    /* 隐藏Streamlit元素 */
-    header, footer, #MainMenu, [data-testid="stHeader"], [data-testid="stDecoration"] {{ display: none !important; }}
+    /* ===== 隐藏 Streamlit 默认元素 ===== */
+    header, footer, #MainMenu, [data-testid="stHeader"], [data-testid="stDecoration"], [data-testid="stToolbar"] {{
+        display: none !important;
+    }}
     
-    /* 侧边栏样式 */
+    /* ===== 🔥 关键：对话输入框区域彻底透明（最重要）===== */
+    [data-testid="stChatInput"].stSticky {{
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }}
+    
+    [data-testid="stChatInput"] > div,
+    [data-testid="stChatInput"] > div > div,
+    [data-testid="stChatInput"] form,
+    [data-testid="stChatInput"] form > div {{
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }}
+    
+    [data-testid="stChatInput"] textarea {{
+        background-color: rgba(25,20,15,0.98) !important;
+        border: 2px solid var(--border-gold) !important;
+        color: var(--text-primary) !important;
+        font-family: 'IM Fell English SC', serif !important;
+        padding: 15px !important;
+        min-height: 80px !important;
+        box-shadow: inset 0 0 15px rgba(0,0,0,0.6) !important;
+    }}
+    
+    [data-testid="stChatInput"] textarea:focus {{
+        outline: none !important;
+        border-color: var(--highlight-gold) !important;
+    }}
+    
+    [data-testid="stChatInput"] button {{
+        background-color: rgba(25,20,15,0.98) !important;
+        border: 2px solid var(--border-gold) !important;
+    }}
+    
+    /* ===== 块容器透明化 ===== */
+    [data-testid="stAppViewContainer"],
+    [data-testid="stBlockContainer"],
+    [data-testid="stVerticalBlock"],
+    [data-testid="stColumn"],
+    [data-testid="stMainBlockContainer"],
+    .stMarkdown > div,
+    .stHtml,
+    blockquote, pre, code {{
+        background-color: transparent !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }}
+    
+    /* ===== 侧边栏 ===== */
     section[data-testid="stSidebar"] {{
         background: rgba(25,15,8,0.98) !important;
         border-right: 3px solid var(--border-gold) !important;
     }}
     section[data-testid="stSidebar"] * {{ color: var(--text-primary) !important; }}
     
-    /* 输入框深色 */
-    [data-testid="stChatInput"] textarea {{
-        background-color: rgba(25,20,15,0.98) !important;
-        border: 2px solid var(--border-gold) !important;
-        color: var(--text-primary) !important;
-    }}
-    
-    /* 按钮风格 */
+    /* ===== 按钮风格 ===== */
     div[data-testid="stButton"] > button {{
         font-family: 'Creepster', cursive !important;
         color: var(--highlight-gold) !important;
@@ -91,13 +148,9 @@ def inject_theme_css(bg_url):
         border: 3px solid var(--thorn-brown) !important;
     }}
     
-    /* 滚动条 */
+    /* ===== 滚动条 ===== */
     ::-webkit-scrollbar {{ width: 8px !important; }}
     ::-webkit-scrollbar-thumb {{ background: rgba(166,124,59,0.5) !important; }}
-    
-    /* 动画 */
-    @keyframes flicker {{ 0%{{opacity:0.7}} 50%{{opacity:1}} 100%{{opacity:0.8}} }}
-    .loading-text {{ animation: flicker 1.5s infinite alternate; }}
     </style>
     """
     return css
@@ -140,14 +193,14 @@ bg_url = f'data:image/png;base64,{bg_base64}' if bg_base64 else ''
 
 
 # ========================
-# 🎨 注入CSS (最最前面！)
+# 🎨 注入 CSS (必须最前面)
 # ========================
 print("[INIT] Injecting theme CSS...")
 st.markdown(inject_theme_css(bg_url), unsafe_allow_html=True)
 
 
 # ========================
-# Banner (使用纯文本+简单HTML，避免复杂嵌套)
+# Banner
 # ========================
 st.markdown("""
 <div style='text-align:center;margin:30px auto;max-width:900px;padding:40px;background:rgba(30,20,10,0.7);border:2px solid #A67C3B;border-radius:10px;'>
@@ -190,7 +243,6 @@ if st.session_state.mode != "home":
 # 💬 聊天处理
 # ========================
 if st.session_state.mode == "explore":
-    # ✅ 修复：使用st.write代替st.info
     st.write("💬 **与暗影对话以明确设计思路**")
     
     user_input = st.chat_input("描述你的想法...")
@@ -199,7 +251,6 @@ if st.session_state.mode == "explore":
         st.session_state.is_generating = True
         st.rerun()
     
-    # 生成按钮
     if len(st.session_state.messages) >= 2:
         st.markdown("---")
         if st.button("✨ 生成最终 Mod", key="gen_from_explore"):
@@ -221,12 +272,7 @@ elif st.session_state.mode == "rapid":
 # ⏳ 生成阶段
 # ========================
 if st.session_state.is_generating:
-    st.markdown("""
-    <div style='text-align:center;padding:40px;'>
-    <h2 class='loading-text' style='font-family:Creepster;color:#FFD700;font-size:2.5rem;'>世界正在扭曲......</h2>
-    <p style='font-family:Griffy;color:#aa8855;margin-top:20px;'>The shadows are weaving your madness...</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center;padding:40px;'><h2 style='font-family:Creepster;color:#FFD700;font-size:2.5rem;'>世界正在扭曲......</h2><p style='font-family:Griffy;color:#aa8855;margin-top:20px;'>The shadows are weaving your madness...</p></div>", unsafe_allow_html=True)
     
     time.sleep(2.5)
     
@@ -284,7 +330,6 @@ with st.sidebar:
     if st.session_state.generated_mods:
         mod = st.session_state.generated_mods[-1]
         
-        # ZIP下载
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             zip_file.writestr("modinfo.lua", mod.get("modinfo", ""))
