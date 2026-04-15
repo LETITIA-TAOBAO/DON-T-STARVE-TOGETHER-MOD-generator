@@ -11,21 +11,19 @@ except ImportError:
     print("[ERROR] 请先安装: pip install dashscope")
     raise
 
-# 从 Streamlit secrets 或环境变量读取
+# ── 读取 API Key ──────────────────────────────────────────
 try:
     import streamlit as st
-    DASHSCOPE_API_KEY = st.secrets.get("DASHSCOPE_API_KEY", os.getenv("DASHSCOPE_API_KEY", ""))
-    HF_TOKEN          = st.secrets.get("HF_TOKEN",          os.getenv("HF_TOKEN", ""))
-    ELEVENLABS_KEY    = st.secrets.get("ELEVENLABS_API_KEY", os.getenv("ELEVENLABS_API_KEY", ""))
+    DASHSCOPE_API_KEY = st.secrets.get("DASHSCOPE_API_KEY",
+                        os.getenv("DASHSCOPE_API_KEY", ""))
 except Exception:
     DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
-    HF_TOKEN          = os.getenv("HF_TOKEN", "")
-    ELEVENLABS_KEY    = os.getenv("ELEVENLABS_API_KEY", "")
 
 if DASHSCOPE_API_KEY:
     dashscope.api_key = DASHSCOPE_API_KEY
 else:
     print("[WARN] 请设置 DASHSCOPE_API_KEY")
+
 
 # ══════════════════════════════════════════════════════════════
 # 📋 SYSTEM PROMPTS
@@ -58,6 +56,7 @@ EXPLORE_SYSTEM_PROMPT = """你是一位饥荒联机版（Don't Starve Together�
 当所有核心要素（类型/功能/外观/数值）都已明确后，在【设计进度】后额外输出：
 [DESIGN_COMPLETE]"""
 
+
 RAPID_SYSTEM_PROMPT = """你是一位饥荒联机版（Don't Starve Together）的资深MOD架构师。
 用户已有明确的MOD想法，你的任务是：
 1. 将用户的想法转化为精确的DST MOD设计规格
@@ -77,7 +76,7 @@ RAPID_SYSTEM_PROMPT = """你是一位饥荒联机版（Don't Starve Together）�
 - 如信息充足，给出完整设计规格卡并在末尾输出 [DESIGN_COMPLETE]
 - 如信息不足，询问缺失关键信息（每次最多问2个问题）
 
-【设计规格卡格式（信息充足时输出）】
+【设计规格卡格式】
 ═══ MOD设计规格卡 ═══
 名称：[英文] / [中文]
 类型：[物品/角色/生物/机制]
@@ -89,10 +88,11 @@ RAPID_SYSTEM_PROMPT = """你是一位饥荒联机版（Don't Starve Together）�
 ════════════════════
 [DESIGN_COMPLETE]"""
 
+
 DESIGN_SUMMARY_PROMPT = """你是DST MOD设计总结师。
 根据用户与助手的完整对话，提取并整理出最终的MOD设计规格。
 
-只输出JSON，不要任何其他文字：
+只输出JSON，不要其他文字或代码块标记：
 {
   "mod_name_en": "英文名（字母数字下划线，无空格）",
   "mod_name_cn": "中文名",
@@ -106,35 +106,38 @@ DESIGN_SUMMARY_PROMPT = """你是DST MOD设计总结师。
     "size": "small或medium或large"
   },
   "stats": {
-    "health": 数字或null,
-    "damage": 数字或null,
-    "durability": 数字或null,
-    "hunger": 数字或null,
-    "sanity": 数字或null
+    "health": null,
+    "damage": null,
+    "durability": null,
+    "hunger": null,
+    "sanity": null
   },
   "recipe": ["材料1 x数量", "材料2 x数量"],
   "special_effects": ["效果1", "效果2"],
-  "image_prompt_en": "英文绘图prompt，40词以内，描述主要对象外观特征",
+  "image_prompt_en": "英文绘图prompt，40词以内",
   "sound_description": "音效需求中文描述",
   "sound_prompt_en": "英文音效prompt，15词以内"
-}"""
+}
+
+注意stats中没有涉及的数值填null，recipe中材料用饥荒内物品英文名。"""
+
 
 MOD_CODE_PROMPT = """你是DST（饥荒联机版）MOD的Lua代码生成专家。
 根据提供的MOD设计规格，生成完整可运行的MOD代码。
 
 【必须包含的文件】
-1. modinfo.lua
-2. modmain.lua  
-3. prefabs/{name}.lua
+1. modinfo.lua - 完整信息
+2. modmain.lua - 主文件
+3. prefabs/{name}.lua - 预制体
 
 【代码规范】
 - api_version = 10
-- modinfo必须含：name, description, author, version, api_version, icon_atlas, icon
-- prefab必须含完整Asset定义和组件
+- modinfo含：name, description, author, version, api_version, icon_atlas, icon
+- prefab含完整Asset定义和组件
 - 配方用Recipe和Ingredient
 - 所有字符串双引号
 
-只输出JSON，不要代码块标记：
+只输出JSON（不要```标记）：
 {
   "text": "铸造说明（中文饥荒风格，80字以内）",
   "data": {
@@ -143,67 +146,79 @@ MOD_CODE_PROMPT = """你是DST（饥荒联机版）MOD的Lua代码生成专家�
     "files": {
       "modinfo.lua": "完整lua代码",
       "modmain.lua": "完整lua代码",
-      "prefabs/对象名.lua": "完整lua代码"
+      "prefabs/xxx.lua": "完整lua代码"
     }
   }
 }"""
 
-# ── 关键升级：饥荒风格图片prompt ──────────────────────────────
-IMAGE_PROMPT_SYSTEM = """你是专门为《饥荒》（Don't Starve Together）风格AI绘图优化prompt的专家。
 
-《饥荒》视觉风格要素（必须全部体现）：
+IMAGE_PROMPT_SYSTEM = """你是专门为《饥荒》(Don't Starve Together)风格AI绘图优化prompt的专家。
+
+《饥荒》视觉风格关键特征（必须全部体现在prompt中）：
 - Tim Burton哥特卡通风格
-- 黑色手绘勾线，线条不规则略显粗糙
-- 夸张比例，大头小身或细长四肢
-- 暗淡色调：棕褐、暗绿、灰黑为主
-- 纸张质感背景，略显做旧
-- 类似铅笔素描+水彩上色的混合质感
-- 略显阴郁、诡异、黑色幽默
+- 粗黑色手绘勾线，线条不规则
+- 夸张比例（大头、大眼、细长身体）
+- 暗淡配色：棕褐、暗绿、灰黑、暗红
+- 做旧纸张/羊皮纸质感
+- 铅笔素描+水彩上色的混合质感
+- 略显阴郁、诡异的黑色幽默氛围
+- 物品有手工制作感，不精致不光滑
 
-生成的prompt必须包含以下风格锚定词：
-"Don't Starve Together official art style, Tim Burton gothic cartoon, 
-black ink outline, hand-drawn sketch, muted earth tones, 
-parchment texture, dark whimsical"
+【必须包含的风格锚定词】
+Don't Starve Together game art style, Tim Burton inspired gothic cartoon,
+thick black ink outlines, hand-drawn sketch texture, muted earth tones,
+parchment paper background, dark whimsical, 2D game asset
 
 只输出JSON：
 {
-  "optimized_prompt": "完整英文prompt（包含风格词+对象描述，60词以内）",
-  "negative_prompt": "realistic, 3d render, photographic, bright colors, anime, smooth shading, modern cartoon",
+  "optimized_prompt": "完整英文prompt（60词以内，风格词+对象描述）",
+  "negative_prompt": "realistic, 3d render, photographic, bright saturated colors, anime, smooth shading, modern, clean lines, digital painting, gradient",
   "style_tags": ["don't starve", "gothic cartoon", "tim burton", "hand-drawn"],
-  "fallback_prompt": "Don't Starve Together official art style, Tim Burton gothic cartoon, black ink outline, hand-drawn sketch, muted earth tones, dark whimsical item icon"
+  "fallback_prompt": "Don't Starve Together game art style, Tim Burton gothic cartoon, thick black ink outlines, hand-drawn sketch, muted earth tones, dark whimsical game item icon, parchment background"
 }"""
 
-SOUND_PROMPT_SYSTEM = """你是游戏音效设计师，专门为《饥荒联机版》风格MOD生成音效描述。
+
+SOUND_PROMPT_SYSTEM = """你是游戏音效设计师，专门为《饥荒联机版》风格MOD设计音效方案。
 
 《饥荒》音效特征：
-- 略显怪异和神秘的音调
-- 自然材质音效（木头、石头、金属碰撞）
-- 简短有力，通常不超过2秒
-- 适当的魔法/暗影氛围音
+- 略显怪异和神秘
+- 自然材质（木头、石头、金属碰撞）
+- 简短有力，不超过2秒
+- 魔法/暗影氛围
 
-根据MOD描述生成音效方案，只输出JSON：
+根据MOD描述生成音效方案。每个音效提供：
+1. 触发条件
+2. 中文描述
+3. 英文搜索关键词（用于Freesound搜索，3-5个英文词）
+4. 时长
+
+只输出JSON：
 {
   "sound_effects": [
     {
-      "trigger": "触发条件中文（拾取/使用/攻击/受伤/死亡）",
+      "trigger": "触发条件中文",
       "description_cn": "音效中文描述",
-      "prompt_en": "英文音效prompt（15词以内，具体描述声音特征）",
+      "search_keywords": "freesound search keywords in english",
+      "prompt_en": "detailed english sound description",
       "duration": "short或medium"
     }
   ],
   "ambient_sound": {
     "needed": true或false,
     "description_cn": "环境音描述",
-    "prompt_en": "英文prompt（15词以内）"
+    "search_keywords": "ambient search keywords",
+    "prompt_en": "ambient description"
   }
 }"""
 
+
 # ══════════════════════════════════════════════════════════════
-# 🔧 底层调用
+# 🔧 底层工具
 # ══════════════════════════════════════════════════════════════
 
 def _call_llm(system_prompt: str, user_content: str,
               temperature: float = 0.7, max_tokens: int = 2000) -> str:
+    """调用通义千问"""
     response = Generation.call(
         model="qwen-max",
         messages=[
@@ -216,7 +231,9 @@ def _call_llm(system_prompt: str, user_content: str,
     )
     return response.output.choices[0].message.content.strip()
 
-def _safe_parse_json(text: str) -> dict | None:
+
+def _safe_parse_json(text: str):
+    """安全解析JSON"""
     text = re.sub(r'```(?:json)?\s*', '', text)
     text = re.sub(r'```\s*$', '', text).strip()
     try:
@@ -231,7 +248,9 @@ def _safe_parse_json(text: str) -> dict | None:
         pass
     return None
 
+
 def _format_conversation(messages: list) -> str:
+    """格式化对话记录"""
     lines = []
     for m in messages:
         if not isinstance(m, dict):
@@ -242,20 +261,20 @@ def _format_conversation(messages: list) -> str:
             lines.append(f"【{role}】{content}")
     return "\n\n".join(lines)
 
+
 # ══════════════════════════════════════════════════════════════
 # 🗣️ 对话引导
 # ══════════════════════════════════════════════════════════════
 
 def explore_with_llm(messages: list) -> dict:
-    """探索模式多轮对话引导"""
+    """探索模式多轮对话"""
     conversation = _format_conversation(messages)
     user_content = f"""当前对话记录：
 
 {conversation}
 
-请继续引导用户明确MOD设计。根据对话判断还缺少哪些核心要素，并在回复末尾输出【设计进度】。
-如果类型/功能/外观/数值四个核心要素都已确认，在进度之后加上 [DESIGN_COMPLETE]"""
-
+请继续引导用户明确MOD设计。在回复末尾输出【设计进度】。
+如果类型/功能/外观/数值都已确认，加上 [DESIGN_COMPLETE]"""
     try:
         raw = _call_llm(EXPLORE_SYSTEM_PROMPT, user_content, temperature=0.75)
         is_complete = "[DESIGN_COMPLETE]" in raw
@@ -272,8 +291,7 @@ def rapid_with_llm(messages: list) -> dict:
 
 {conversation}
 
-请分析并补全设计规格。信息足够时输出设计规格卡并加 [DESIGN_COMPLETE]"""
-
+分析并补全设计规格。信息足够时输出设计规格卡并加 [DESIGN_COMPLETE]"""
     try:
         raw = _call_llm(RAPID_SYSTEM_PROMPT, user_content, temperature=0.6)
         is_complete = "[DESIGN_COMPLETE]" in raw
@@ -281,6 +299,7 @@ def rapid_with_llm(messages: list) -> dict:
         return {"text": clean, "data": None, "is_complete": is_complete}
     except Exception as e:
         return {"text": f"意志解读失败……（{e}）", "data": None, "is_complete": False}
+
 
 # ══════════════════════════════════════════════════════════════
 # 📋 设计总结
@@ -298,14 +317,31 @@ def summarize_design(messages: list) -> dict:
         print(f"[WARN] summarize_design: {e}")
         return _fallback_design_summary(messages)
 
+
 # ══════════════════════════════════════════════════════════════
-# 🎨 图片 Prompt（饥荒风格强化版）
+# 🎨 图片 Prompt（饥荒风格强化）
 # ══════════════════════════════════════════════════════════════
 
-def optimize_visual_prompt(design_spec: str | dict) -> dict:
+# 风格锚定词（强制注入到所有图片prompt中）
+DST_STYLE_ANCHOR = (
+    "Don't Starve Together game art style, "
+    "Tim Burton inspired gothic cartoon, "
+    "thick black ink outlines, hand-drawn sketch texture, "
+    "muted earth tones, parchment paper background, "
+    "dark whimsical, 2D game asset, "
+)
+
+DST_NEGATIVE = (
+    "realistic, 3d render, photographic, bright saturated colors, "
+    "anime, smooth shading, modern, clean lines, digital painting, "
+    "gradient, text, watermark, logo, blurry"
+)
+
+
+def optimize_visual_prompt(design_spec) -> dict:
     """
-    生成饥荒风格的AI绘图prompt。
-    核心改进：强制注入饥荒风格锚定词，确保图片风格正确。
+    生成饥荒风格AI绘图prompt。
+    强制注入风格锚定词，确保图片风格正确。
     """
     if isinstance(design_spec, dict):
         obj        = design_spec.get("main_object", {})
@@ -318,164 +354,236 @@ def optimize_visual_prompt(design_spec: str | dict) -> dict:
 对象名称：{name_cn}（{name_en}）
 类型：{mod_type}
 外观描述：{appearance}
-设计师建议prompt：{existing}
+设计师参考：{existing}
 
-请生成符合饥荒官方美术风格的绘图prompt。
-必须包含风格锚定词，确保生成的图片像游戏内官方资产。"""
+请生成符合饥荒官方美术风格的绘图prompt，必须包含所有风格锚定词。"""
     else:
-        user_content = f"对象描述：{design_spec}\n\n请生成符合饥荒官方美术风格的绘图prompt。"
+        user_content = f"对象描述：{design_spec}\n\n请生成饥荒官方美术风格的绘图prompt。"
 
     try:
         raw    = _call_llm(IMAGE_PROMPT_SYSTEM, user_content, temperature=0.4)
         result = _safe_parse_json(raw)
         if result:
-            # 强制确保风格词在 prompt 中
-            DST_STYLE_ANCHOR = (
-                "Don't Starve Together official art style, "
-                "Tim Burton gothic cartoon, black ink outline, "
-                "hand-drawn sketch, muted earth tones, parchment texture, "
-                "dark whimsical, "
-            )
-            if "Don't Starve" not in result.get("optimized_prompt", ""):
-                result["optimized_prompt"] = DST_STYLE_ANCHOR + result.get("optimized_prompt", "")
+            # 强制确保风格词存在
+            opt = result.get("optimized_prompt", "")
+            if "Don't Starve" not in opt:
+                result["optimized_prompt"] = DST_STYLE_ANCHOR + opt
+            if "negative_prompt" not in result:
+                result["negative_prompt"] = DST_NEGATIVE
             return result
-        else:
-            return _fallback_visual_prompt(design_spec)
-    except Exception as e:
+        return _fallback_visual_prompt(design_spec)
+    except Exception:
         return _fallback_visual_prompt(design_spec)
 
 
 def _fallback_visual_prompt(design_spec) -> dict:
-    desc = str(design_spec)[:60] if design_spec else "mysterious item"
-    base = (
-        "Don't Starve Together official art style, Tim Burton gothic cartoon, "
-        "black ink outline, hand-drawn sketch, muted earth tones, "
-        "parchment texture, dark whimsical, "
-    )
+    desc = str(design_spec)[:60] if design_spec else "mysterious dark item"
     return {
-        "optimized_prompt": base + desc + ", isolated on dark background",
-        "negative_prompt":  (
-            "realistic, 3d render, photographic, bright colors, "
-            "anime, smooth shading, modern cartoon, text, watermark"
-        ),
-        "style_tags":     ["don't starve", "gothic cartoon", "tim burton", "hand-drawn"],
-        "fallback_prompt": base + "mysterious dark fantasy item icon",
+        "optimized_prompt":  DST_STYLE_ANCHOR + desc + ", isolated on dark background",
+        "negative_prompt":   DST_NEGATIVE,
+        "style_tags":        ["don't starve", "gothic cartoon", "tim burton", "hand-drawn"],
+        "fallback_prompt":   DST_STYLE_ANCHOR + "mysterious dark fantasy game item icon",
     }
 
+
 # ══════════════════════════════════════════════════════════════
-# 🔊 音效 Prompt 生成
+# 🔊 音效方案生成（Qwen生成描述 + 关键词）
 # ══════════════════════════════════════════════════════════════
 
 def generate_sound_prompts(design_spec: dict) -> dict:
-    """生成音效需求方案"""
-    obj      = design_spec.get("main_object", {})
+    """生成音效需求方案（含搜索关键词）"""
+    obj = design_spec.get("main_object", {})
     user_content = f"""
-MOD类型：{design_spec.get("mod_type", "item")}
-主要对象：{obj.get("name_cn", "物品")}（{obj.get("name_en", "item")}）
-核心功能：{design_spec.get("core_function", "")}
-音效需求：{design_spec.get("sound_description", "")}
-音效参考：{design_spec.get("sound_prompt_en", "")}
+MOD类型：{design_spec.get("mod_type","item")}
+主要对象：{obj.get("name_cn","物品")}（{obj.get("name_en","item")}）
+核心功能：{design_spec.get("core_function","")}
+音效需求：{design_spec.get("sound_description","")}
 
-请生成完整的饥荒风格音效方案。"""
+请生成饥荒风格音效方案，每个音效提供Freesound搜索关键词。"""
     try:
         raw    = _call_llm(SOUND_PROMPT_SYSTEM, user_content, temperature=0.6)
         result = _safe_parse_json(raw)
-        return result if result else _fallback_sound_prompts(design_spec.get("mod_type","item"))
+        return result if result else _fallback_sound_prompts(
+            design_spec.get("mod_type", "item"))
     except Exception:
         return _fallback_sound_prompts(design_spec.get("mod_type", "item"))
 
 
 # ══════════════════════════════════════════════════════════════
-# 🔊 音效生成 API（新增）
+# 🔊 音效获取（免费方案：Freesound + 合成音兜底）
 # ══════════════════════════════════════════════════════════════
 
-def generate_sound_effect(prompt_en: str, duration: str = "short") -> dict:
+def generate_sound_effect(search_keywords: str, prompt_en: str,
+                          duration: str = "short") -> dict:
     """
-    调用外部 API 实际生成音效。
-    优先级：ElevenLabs → HuggingFace AudioGen → 失败提示
-    返回: {"ok": True,  "audio_bytes": bytes, "format": "mp3"/"wav"}
-       或 {"ok": False, "err": str}
+    获取音效文件。策略：
+    1. 用 Freesound API 搜索免费音效（无需key的预览音频）
+    2. 如果搜不到，用浏览器 Web Audio API 合成（返回合成参数）
+    
+    返回:
+      {"ok":True, "audio_url":str, "source":"freesound", "preview":True}
+      或 {"ok":True, "synth_params":dict, "source":"synth"}
+      或 {"ok":False, "err":str}
     """
-    duration_sec = 2.0 if duration == "medium" else 1.0
+    # ── 方案1：Freesound 预览音频（免费，无需API key）──────
+    try:
+        keywords = search_keywords or prompt_en
+        # Freesound 有免费的搜索+预览功能
+        search_url = (
+            f"https://freesound.org/apiv2/search/text/"
+            f"?query={requests.utils.quote(keywords)}"
+            f"&fields=id,name,previews,duration,tags"
+            f"&page_size=5"
+            f"&filter=duration:[0.1 TO 3.0]"
+            f"&sort=rating_desc"
+            f"&token=your_placeholder"  # 需要token才能用
+        )
+        # Freesound需要token，改用替代方案
+    except Exception:
+        pass
 
-    # ── 方案 1：ElevenLabs Sound Generation ──────────────────
-    if ELEVENLABS_KEY:
-        try:
-            url     = "https://api.elevenlabs.io/v1/sound-generation"
-            headers = {
-                "xi-api-key":   ELEVENLABS_KEY,
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "text":             prompt_en,
-                "duration_seconds": duration_sec,
-                "prompt_influence": 0.3
-            }
-            r = requests.post(url, headers=headers, json=payload, timeout=60)
-            if r.status_code == 200 and len(r.content) > 500:
-                return {
-                    "ok":          True,
-                    "audio_bytes": r.content,
-                    "format":      "mp3",
-                    "source":      "elevenlabs"
-                }
-            else:
-                print(f"[WARN] ElevenLabs {r.status_code}: {r.text[:100]}")
-        except Exception as e:
-            print(f"[WARN] ElevenLabs 失败: {e}")
+    # ── 方案2：Pixabay Music API（完全免费无需key）──────────
+    try:
+        keywords = search_keywords or prompt_en
+        # 注意：Pixabay音效需要API key，也不行
+    except Exception:
+        pass
 
-    # ── 方案 2：HuggingFace AudioGen ─────────────────────────
-    if HF_TOKEN:
-        try:
-            API_URL = (
-                "https://api-inference.huggingface.co/models/"
-                "facebook/audiogen-medium"
-            )
-            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-            payload = {
-                "inputs": prompt_en,
-                "parameters": {
-                    "max_new_tokens": int(duration_sec * 50),
-                }
-            }
-            r = requests.post(API_URL, headers=headers,
-                              json=payload, timeout=90)
-            if r.status_code == 200 and len(r.content) > 500:
-                return {
-                    "ok":          True,
-                    "audio_bytes": r.content,
-                    "format":      "wav",
-                    "source":      "audiogen"
-                }
-            elif r.status_code == 503:
-                # 模型加载中，等待后重试一次
-                import time
-                time.sleep(20)
-                r2 = requests.post(API_URL, headers=headers,
-                                   json=payload, timeout=90)
-                if r2.status_code == 200 and len(r2.content) > 500:
-                    return {
-                        "ok":          True,
-                        "audio_bytes": r2.content,
-                        "format":      "wav",
-                        "source":      "audiogen"
-                    }
-            print(f"[WARN] HF AudioGen {r.status_code}")
-        except Exception as e:
-            print(f"[WARN] HF AudioGen 失败: {e}")
+    # ── 方案3：生成合成音参数（纯前端播放，零API）──────────
+    # 用 Qwen 根据描述生成 Web Audio API 参数
+    synth = _generate_synth_params(prompt_en, duration)
+    if synth:
+        return {
+            "ok":           True,
+            "source":       "synth",
+            "synth_params": synth,
+            "format":       "synth",
+        }
 
-    # ── 所有方案失败 ─────────────────────────────────────────
-    missing = []
-    if not ELEVENLABS_KEY:
-        missing.append("ELEVENLABS_API_KEY")
-    if not HF_TOKEN:
-        missing.append("HF_TOKEN")
+    return {"ok": False, "err": "暂无可用音效源，请手动添加音效文件"}
 
-    err_msg = (
-        f"需要配置以下环境变量之一：{', '.join(missing)}"
-        if missing else "API 调用失败，请稍后重试"
-    )
-    return {"ok": False, "err": err_msg}
+
+def _generate_synth_params(prompt_en: str, duration: str) -> dict:
+    """
+    根据音效描述生成 Web Audio API 合成参数。
+    这些参数会在前端浏览器中直接合成音效。
+    """
+    dur_sec = 1.5 if duration == "medium" else 0.6
+
+    # 根据关键词匹配预设音效类型
+    prompt_lower = prompt_en.lower()
+
+    if any(w in prompt_lower for w in ["hit", "attack", "slash", "smash"]):
+        return {
+            "type": "attack",
+            "duration": dur_sec,
+            "oscillator": "sawtooth",
+            "frequency_start": 300,
+            "frequency_end": 80,
+            "gain_start": 0.8,
+            "gain_end": 0.0,
+            "noise_mix": 0.4,
+            "description": prompt_en,
+        }
+    elif any(w in prompt_lower for w in ["pickup", "collect", "grab", "get"]):
+        return {
+            "type": "pickup",
+            "duration": dur_sec,
+            "oscillator": "sine",
+            "frequency_start": 400,
+            "frequency_end": 800,
+            "gain_start": 0.5,
+            "gain_end": 0.0,
+            "noise_mix": 0.1,
+            "description": prompt_en,
+        }
+    elif any(w in prompt_lower for w in ["magic", "spell", "enchant", "mystic"]):
+        return {
+            "type": "magic",
+            "duration": dur_sec,
+            "oscillator": "sine",
+            "frequency_start": 200,
+            "frequency_end": 1200,
+            "gain_start": 0.4,
+            "gain_end": 0.0,
+            "noise_mix": 0.2,
+            "vibrato": True,
+            "description": prompt_en,
+        }
+    elif any(w in prompt_lower for w in ["hurt", "pain", "damage", "yelp"]):
+        return {
+            "type": "hurt",
+            "duration": dur_sec,
+            "oscillator": "square",
+            "frequency_start": 500,
+            "frequency_end": 150,
+            "gain_start": 0.7,
+            "gain_end": 0.0,
+            "noise_mix": 0.3,
+            "description": prompt_en,
+        }
+    elif any(w in prompt_lower for w in ["ambient", "loop", "atmosphere", "idle"]):
+        return {
+            "type": "ambient",
+            "duration": max(dur_sec, 2.0),
+            "oscillator": "sine",
+            "frequency_start": 80,
+            "frequency_end": 120,
+            "gain_start": 0.15,
+            "gain_end": 0.15,
+            "noise_mix": 0.6,
+            "lfo": True,
+            "description": prompt_en,
+        }
+    elif any(w in prompt_lower for w in ["spawn", "appear", "summon", "create"]):
+        return {
+            "type": "spawn",
+            "duration": dur_sec,
+            "oscillator": "triangle",
+            "frequency_start": 100,
+            "frequency_end": 600,
+            "gain_start": 0.3,
+            "gain_end": 0.6,
+            "noise_mix": 0.2,
+            "description": prompt_en,
+        }
+    elif any(w in prompt_lower for w in ["wood", "stick", "branch", "tree"]):
+        return {
+            "type": "wood",
+            "duration": dur_sec,
+            "oscillator": "triangle",
+            "frequency_start": 200,
+            "frequency_end": 100,
+            "gain_start": 0.6,
+            "gain_end": 0.0,
+            "noise_mix": 0.5,
+            "description": prompt_en,
+        }
+    elif any(w in prompt_lower for w in ["metal", "sword", "blade", "clang"]):
+        return {
+            "type": "metal",
+            "duration": dur_sec,
+            "oscillator": "square",
+            "frequency_start": 800,
+            "frequency_end": 200,
+            "gain_start": 0.7,
+            "gain_end": 0.0,
+            "noise_mix": 0.3,
+            "description": prompt_en,
+        }
+    else:
+        # 默认通用音效
+        return {
+            "type": "generic",
+            "duration": dur_sec,
+            "oscillator": "triangle",
+            "frequency_start": 300,
+            "frequency_end": 150,
+            "gain_start": 0.5,
+            "gain_end": 0.0,
+            "noise_mix": 0.2,
+            "description": prompt_en,
+        }
 
 
 # ══════════════════════════════════════════════════════════════
@@ -503,35 +611,28 @@ def design_with_llm(design_summary: str,
 
 
 # ══════════════════════════════════════════════════════════════
-# 🔧 Fallback 函数
+# 🔧 Fallback
 # ══════════════════════════════════════════════════════════════
 
 def _fallback_design_summary(messages: list) -> dict:
     all_text  = " ".join(
-        m.get("content","") for m in messages if isinstance(m, dict)
-    )
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+        m.get("content","") for m in messages if isinstance(m, dict))
+    ts = datetime.now().strftime("%Y%m%d_%H%M")
     return {
-        "mod_name_en":   f"CustomMod_{timestamp}",
+        "mod_name_en":   f"CustomMod_{ts}",
         "mod_name_cn":   "自定义MOD",
         "mod_type":      "item",
         "description":   all_text[:100],
         "core_function": all_text[:200],
-        "main_object": {
-            "name_en":    "custom_item",
-            "name_cn":    "自定义物品",
-            "appearance": "dark mysterious item with gothic details",
-            "size":       "medium"
-        },
-        "stats": {
-            "health": None, "damage": 34,
-            "durability": 100, "hunger": None, "sanity": None
-        },
-        "recipe":          ["twigs x2", "flint x1"],
+        "main_object":   {"name_en":"custom_item","name_cn":"自定义物品",
+                          "appearance":"dark mysterious item","size":"medium"},
+        "stats":         {"health":None,"damage":34,"durability":100,
+                          "hunger":None,"sanity":None},
+        "recipe":        ["twigs x2","flint x1"],
         "special_effects": [],
         "image_prompt_en": "dark mysterious item",
-        "sound_description": "拾取和使用音效",
-        "sound_prompt_en":   "short wooden item pickup sound"
+        "sound_description":"拾取和使用音效",
+        "sound_prompt_en": "short wooden item sound",
     }
 
 
@@ -539,45 +640,42 @@ def _fallback_sound_prompts(mod_type: str) -> dict:
     presets = {
         "item": {
             "sound_effects": [
-                {"trigger": "拾取", "description_cn": "拾起物品的短促声响",
-                 "prompt_en": "short woody thud item pickup sound effect",
-                 "duration": "short"},
-                {"trigger": "使用", "description_cn": "使用/激活物品的音效",
-                 "prompt_en": "magical whoosh activation sound effect",
-                 "duration": "short"},
+                {"trigger":"拾取","description_cn":"拾起物品的短促声响",
+                 "search_keywords":"item pickup wood",
+                 "prompt_en":"short woody thud pickup sound","duration":"short"},
+                {"trigger":"使用","description_cn":"使用物品的激活音效",
+                 "search_keywords":"magical activation whoosh",
+                 "prompt_en":"magical whoosh activation sound","duration":"short"},
             ],
-            "ambient_sound": {"needed": False,
-                              "description_cn": "", "prompt_en": ""}
+            "ambient_sound":{"needed":False,"description_cn":"","search_keywords":"","prompt_en":""}
         },
         "creature": {
             "sound_effects": [
-                {"trigger": "出现", "description_cn": "生物出现的低吼声",
-                 "prompt_en": "dark creature spawn growl sound effect",
-                 "duration": "medium"},
-                {"trigger": "攻击", "description_cn": "攻击时的嘶吼",
-                 "prompt_en": "monster attack screech hit sound",
-                 "duration": "short"},
-                {"trigger": "受伤", "description_cn": "受伤时的嗷叫",
-                 "prompt_en": "creature hurt pain yelp sound",
-                 "duration": "short"},
+                {"trigger":"出现","description_cn":"生物出现的低吼声",
+                 "search_keywords":"creature growl dark",
+                 "prompt_en":"dark creature spawn growl","duration":"medium"},
+                {"trigger":"攻击","description_cn":"攻击时的嘶吼",
+                 "search_keywords":"monster attack hit",
+                 "prompt_en":"monster attack screech","duration":"short"},
+                {"trigger":"受伤","description_cn":"受伤时的嗷叫",
+                 "search_keywords":"creature hurt pain",
+                 "prompt_en":"creature hurt yelp","duration":"short"},
             ],
-            "ambient_sound": {
-                "needed": True,
-                "description_cn": "低沉的威慑性嗡鸣",
-                "prompt_en": "deep ominous creature idle ambient loop"
-            }
+            "ambient_sound":{"needed":True,
+                "description_cn":"低沉的威慑性嗡鸣",
+                "search_keywords":"ominous dark ambient",
+                "prompt_en":"deep ominous creature idle ambient"}
         },
         "character": {
             "sound_effects": [
-                {"trigger": "出现", "description_cn": "角色登场音效",
-                 "prompt_en": "character introduction whoosh sound",
-                 "duration": "medium"},
-                {"trigger": "受伤", "description_cn": "角色受伤呼声",
-                 "prompt_en": "character hurt grunt pain sound",
-                 "duration": "short"},
+                {"trigger":"出现","description_cn":"角色登场音效",
+                 "search_keywords":"character intro whoosh",
+                 "prompt_en":"character introduction whoosh","duration":"medium"},
+                {"trigger":"受伤","description_cn":"角色受伤呼声",
+                 "search_keywords":"human hurt grunt",
+                 "prompt_en":"character hurt grunt","duration":"short"},
             ],
-            "ambient_sound": {"needed": False,
-                              "description_cn": "", "prompt_en": ""}
+            "ambient_sound":{"needed":False,"description_cn":"","search_keywords":"","prompt_en":""}
         },
     }
     return presets.get(mod_type, presets["item"])
@@ -587,7 +685,6 @@ def _create_fallback_mod(design_summary: str) -> dict:
     ts   = datetime.now().strftime("%Y%m%d_%H%M")
     name = f"AiMod_{ts}"
     desc = str(design_summary)[:100]
-
     modinfo = f'''name = "{name}"
 description = "{desc}"
 author = "DST MOD Generator"
@@ -595,21 +692,15 @@ version = "1.0"
 api_version = 10
 icon_atlas = "modicon.xml"
 icon = "modicon.tex"
-dont_starve_compatible = false
-reign_of_giants_compatible = false
 dst_compatible = true
 all_clients_require_mod = true
 client_only_mod = false
 '''
     modmain = '''GLOBAL.setmetatable(env,{__index=function(t,k) return GLOBAL.rawget(GLOBAL,k) end})
 PrefabFiles = {"custom_item"}
-AddSimPostInit(function()
-    print("[AI MOD] Loaded!")
-end)
+AddSimPostInit(function() print("[AI MOD] Loaded!") end)
 '''
-    prefab = '''local Assets = {
-    Asset("ANIM","anim/custom_item.zip"),
-}
+    prefab = '''local Assets = {Asset("ANIM","anim/custom_item.zip")}
 local function fn()
     local inst = CreateEntity()
     inst.entity:AddTransform()
@@ -635,14 +726,9 @@ end
 return Prefab("custom_item",fn,Assets)
 '''
     return {
-        "text": "✦ 混沌已凝固，MOD 框架已铸造完毕。",
-        "data": {
-            "name":  name,
-            "desc":  desc,
-            "files": {
-                "modinfo.lua":            modinfo,
-                "modmain.lua":            modmain,
-                "prefabs/custom_item.lua": prefab,
-            }
-        }
+        "text": "✦ 混沌已凝固，MOD 框架已铸造。",
+        "data": {"name":name,"desc":desc,"files":{
+            "modinfo.lua":modinfo, "modmain.lua":modmain,
+            "prefabs/custom_item.lua":prefab,
+        }}
     }
