@@ -8,7 +8,6 @@ import re
 # =========================
 dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
 
-
 # =========================
 # 🧠 Prompt（保持你原设计）
 # =========================
@@ -28,7 +27,6 @@ EXPLORATION_PROMPT = """
 （以下内容保持你原来的prompt，可继续粘贴扩展）
 """
 
-
 FAST_PROMPT = """
 # 角色
 你是一个专业的《Don't Starve Together》Mod设计与实现专家。
@@ -37,7 +35,6 @@ FAST_PROMPT = """
 
 ⚠️ 禁止输出JSON或键值对格式
 """
-
 
 STRUCTURE_HINT = """
 在回答最后附加JSON（仅用于系统解析）：
@@ -48,7 +45,6 @@ STRUCTURE_HINT = """
   "mechanics": ["机制1", "机制2"]
 }
 """
-
 
 # =========================
 # 🧠 JSON 提取（安全版）
@@ -67,7 +63,6 @@ def extract_json(text: str):
             continue
 
     return None
-
 
 # =========================
 # 🧹 文本清理（安全版）
@@ -93,7 +88,6 @@ def clean_text(text: str):
             result.append(line)
 
     return "\n".join(result).strip()
-
 
 # =========================
 # 🚀 LLM 调用核心
@@ -132,13 +126,11 @@ def call_qwen(user_input="", mode="explore", messages=None):
             "data": None
         }
 
-
 # =========================
 # 🎯 对外接口
 # =========================
 def design_with_llm(user_input: str):
     return call_qwen(user_input, mode="fast")
-
 
 def explore_with_llm(messages):
     return call_qwen(messages=messages, mode="explore")
