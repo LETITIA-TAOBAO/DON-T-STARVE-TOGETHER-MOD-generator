@@ -1,66 +1,51 @@
-# ui/theme.py
+def inject_theme(bg_base64=None):
 
-THEME = {
-    "bg": "#0f0f0f",
-    "panel": "#1a1a1a",
-    "panel_light": "#222222",
-    "text": "#e6e6e6",
-    "sub_text": "#aaaaaa",
-    "border": "#333333",
-    "accent": "#7c6cff",
-    "accent2": "#4fd1c5",
-}
+    bg_style = ""
+
+    if bg_base64:
+        bg_style = f"""
+        background:
+            linear-gradient(rgba(10,10,10,0.85), rgba(10,10,10,0.95)),
+            url("data:image/png;base64,{bg_base64}");
+        background-size: cover;
+        background-attachment: fixed;
+        background-position: center;
+        """
+
+    else:
+        bg_style = "background-color: #111;"
 
 
-def inject_theme():
     return f"""
     <style>
-    html, body {{
-        background-color: {THEME["bg"]};
-        color: {THEME["text"]};
-    }}
 
     .stApp {{
-        background-color: {THEME["bg"]};
+        {bg_style}
+        animation: bgBreath 12s ease-in-out infinite;
+    }}
+
+    @keyframes bgBreath {{
+        0% {{ background-size: 100%; }}
+        50% {{ background-size: 105%; }}
+        100% {{ background-size: 100%; }}
     }}
 
     h1, h2, h3 {{
-        color: {THEME["text"]};
+        color: #f2e6c9;
+        text-shadow: 0 0 10px rgba(255,200,120,0.4);
     }}
 
-    /* 输入框 */
-    input, textarea {{
-        background-color: {THEME["panel"]} !important;
-        color: {THEME["text"]} !important;
-        border: 1px solid {THEME["border"]} !important;
-    }}
-
-    /* 按钮 */
-    .stButton > button {{
-        background: linear-gradient(135deg, {THEME["accent"]}, {THEME["accent2"]});
-        color: white;
+    button {{
+        background: linear-gradient(145deg, #3a2f25, #1e1812);
+        color: #f5e6c8;
         border-radius: 10px;
-        border: none;
-        padding: 8px 16px;
+        transition: all 0.2s;
     }}
 
-    .stButton > button:hover {{
-        transform: scale(1.02);
-        transition: 0.2s;
+    button:hover {{
+        transform: scale(1.05);
+        box-shadow: 0 0 10px rgba(255,200,120,0.5);
     }}
 
-    /* 卡片 */
-    .card {{
-        background: {THEME["panel"]};
-        border: 1px solid {THEME["border"]};
-        border-radius: 12px;
-        padding: 16px;
-        margin: 10px 0;
-    }}
-
-    /* 代码块 */
-    code {{
-        background-color: {THEME["panel_light"]} !important;
-    }}
     </style>
     """
