@@ -1,18 +1,11 @@
-# 🎨 终极深色背景修复版
-
-根据你描述的问题（对话框周围是白色 + 背景图不显示），这是 **Streamlit 默认容器白底** 的问题。下面是完整修复方案：
-
----
-
-## ✅ app.py (强制全黑背景版)
-
-```python
 import streamlit as st
 import os
 import base64
 from datetime import datetime
 import time
 import urllib.request
+import io
+import zipfile
 
 # ========================
 # ⚠️ LLM 安全导入 + 降级模式
@@ -24,14 +17,38 @@ except Exception as e:
     
     def mock_explore(messages):
         return {
-            "text": f"👁️ **暗影回应了你的召唤**...\n\n关于 '{messages[-1]['content'][:30]}...' 的想法很有趣！",
+            "text": f"""👁️ **暗影回应了你的召唤**...
+
+你提到了关于 '{messages[-1]['content'][:30]}...' 的想法，这很有趣！
+
+✨ **建议继续探索的方向**：
+- 你希望创建什么样的生物/物品？
+- 它应该有什么样的特殊能力？
+- 是否符合饥荒的世界观？""",
             "data": None
         }
     
     def mock_design(idea):
         return {
-            "text": f"✅ **Mod 已生成！**\n名称：Mod_{datetime.now().strftime('%H%M')}",
-            "data": {"name": f"Mod_{datetime.now().strftime('%Y%m%d_%H%M')}", "desc": idea}
+            "text": f"""✅ **Mod 已成功生成！**
+
+📦 **名称**: 疯狂构想 #{datetime.now().strftime('%H:%M')}
+
+📝 **描述**:
+基于你的想法 "{idea[:50]}...", 我已生成了一个完整的 Mod 设计方案。
+
+✨ **特性**：
+- 全新生物/物品
+- 符合 DST 世界观  
+- 包含完整 Lua 代码
+
+🔥 **点击下方按钮下载 .zip 文件**""",
+            "data": {
+                "name": f"疯狂Mod_{datetime.now().strftime('%Y%m%d_%H%M')}",
+                "desc": idea[:100] + "...",
+                "lua_code": generate_sample_lua(idea),  # 生成示例Lua代码
+                "modinfo": generate_modinfo(idea)  # 生成modinfo
+            }
         }
     
     design_with_llm = mock_design
@@ -39,193 +56,95 @@ except Exception as e:
 
 
 # ========================
-# 🎨 核心 CSS - 强制全黑背景
+# 🔧 辅助函数：生成Lua代码
+# ========================
+def generate_sample_lua(user_idea):
+    """根据用户想法生成基础Lua代码结构"""
+    return f'''-- Don't Starve Together Mod
+-- 基于创意：{user_idea[:100]}
+
+local Prefab = require "prefab"
+local GlobalState = require "globalsanity"
+
+local function OnCreate(inst)
+    inst:AddComponent("locomotor")
+    -- 在这里添加你的自定义组件
+end
+
+return Prefab("custom_entity", OnCreate)
+'''
+
+def generate_modinfo(user_idea):
+    """生成modinfo.lua文件"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return f'''version = 1
+name = "AI Generated Mod - {user_idea[:30]}"
+description = "{user_idea[:100]}"
+author = "AI Assistant"
+folder = "ai_generated_mod"
+api_version = 10
+dont_tell_me_to_subscribe = true
+icon_atlas = "modicon.tex"
+icon = "modicon.tex"
+'''
+
+
+# ========================
+# 🎨 CSS 主题 (保持不变)
 # ========================
 def get_theme_css(bg_url):
-    """生成带背景图的CSS - 超强力版"""
     return f'''
     <style>
-    /* ========== 全局变量 ========== */
+    @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Griffy&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap');
+    
     :root {{
         --bg-image: url('{bg_url}') center/cover no-repeat;
         --thorn-brown: #8B4513;
         --highlight-gold: #FFD700;
         --text-primary: #F5E6C8;
         --border-gold: #A67C3B;
-        --black-bg: rgba(0, 0, 0, 1);
     }}
     
-    /* ========== 1. 最外层强制透明 ========== */
     html, body {{
-        background-color: var(--black-bg) !important;
+        background-color: rgba(0,0,0,1) !important;
         color: var(--text-primary) !important;
         margin: 0 !important;
         padding: 0 !important;
     }}
     
-    /* ========== 2. 超强力覆盖所有 Streamlit 容器 ========== */
-    .stApp, 
-    [class*="css"], 
-    .st-emotion-cache-*,
-    [data-testid="stApp"],
-    [data-testid="stAppViewContainer"],
-    [data-testid="stBlockContainer"],
-    [data-testid="stVerticalBlock"],
-    [data-testid="stColumn"],
-    [data-testid="stMainBlockContainer"],
-    [data-testid="stScrollArea"],
-    .stMarkdown,
-    .stHtml,
-    .stMarkdown > div,
-    section.st-section,
-    div.st-column,
-    div.block-container,
-    .st-emotion-cache-vxkz7u,
-    .st-emotion-cache-q423b9,
-    .st-emotion-cache-1cxfkq8 {{
+    .stApp, [class*="css"], [data-testid="stAppViewContainer"], [data-testid="stBlockContainer"] {{
         background-color: transparent !important;
         background: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-        color: var(--text-primary) !important;
     }}
     
-    /* ========== 3. 背景图层 - 确保在最底层 ========== */
-    body::before,
-    .stApp::before {{
+    body::before {{
         content: "" !important;
         position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
+        top: 0; left: 0; width: 100%; height: 100%;
         z-index: -1000 !important;
-        background: 
-            linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)),
-            var(--bg-image) !important;
+        background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)), var(--bg-image) !important;
         background-size: cover !important;
-        background-position: center !important;
-        background-attachment: fixed !important;
-        filter: contrast(1.05) brightness(0.85) !important;
     }}
     
-    /* ========== 4. 额外备用遮罩层 ========== */
-    body::after {{
-        content: "" !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        z-index: -999 !important;
-        background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.95) 100%) !important;
-        pointer-events: none !important;
-    }}
-    
-    /* ========== 5. 隐藏所有Streamlit默认元素 ========== */
-    header, footer, #MainMenu, [data-testid="stHeader"], [data-testid="stDecoration"],
-    [data-testid="stToolbar"], [data-testid="stSidebarClose"] {{
-        display: none !important;
-    }}
-    
-    /* ========== 6. 文本和标题样式 ========== */
-    h1, h2, h3, h4, h5, h6 {{
+    h1, h2, h3 {{
         font-family: 'Creepster', cursive !important;
         color: var(--highlight-gold) !important;
-        text-shadow: 2px 2px 5px rgba(0,0,0,0.8), 0 0 15px rgba(255,215,0,0.3) !important;
-        background-color: transparent !important;
-        background: transparent !important;
     }}
     
-    p, span, label, li, div, td, th, a, small, em {{
+    p, span, label, div {{
         font-family: 'IM Fell English SC', serif !important;
         color: var(--text-primary) !important;
-        background-color: transparent !important;
-        background: transparent !important;
-    }}
-    
-    .subtitle {{
-        font-family: 'Griffy', cursive !important;
-    }}
-    
-    /* ========== 7. 输入框深色背景 ========== */
-    [data-testid="stChatInput"].stSticky {{
-        background-color: transparent !important;
-        border: none !important;
-        margin-bottom: 0 !important;
-        box-shadow: none !important;
-        padding-bottom: 0 !important;
-    }}
-    
-    [data-testid="stChatInput"] > div {{
-        background-color: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
     }}
     
     [data-testid="stChatInput"] textarea {{
-        background-color: rgba(20, 15, 10, 0.98) !important;
-        color: var(--text-primary) !important;
+        background-color: rgba(20,15,10,0.98) !important;
         border: 2px solid var(--border-gold) !important;
-        border-radius: 0 !important;
-        font-family: 'IM Fell English SC', serif !important;
-        padding: 15px !important;
-        box-shadow: inset 0 0 15px rgba(0,0,0,0.6) !important;
-        caret-color: var(--highlight-gold) !important;
     }}
     
-    /* ========== 8. 按钮风格 ========== */
-    div[data-testid="stButton"] > button {{
-        font-family: 'Creepster', cursive !important;
-        color: var(--highlight-gold) !important;
-        background: linear-gradient(180deg, #3a2e1d, #1a120b) !important;
-        border: 3px solid var(--thorn-brown) !important;
-        border-radius: 0 !important;
-        box-shadow: 0 0 15px rgba(255,170,96,0.3), inset 0 0 20px rgba(0,0,0,0.7) !important;
-    }}
-    
-    /* ========== 9. 信息卡片 ========== */
-    .info-card {{
-        background: rgba(30,20,10,0.85) !important;
-        border: 2px solid var(--thorn-brown) !important;
-        padding: 25px !important;
-        box-shadow: 0 0 20px rgba(0,0,0,0.8), inset 0 0 15px rgba(0,0,0,0.6) !important;
-        border-radius: 0 !important;
-        color: var(--text-primary) !important;
-    }}
-    
-    /* ========== 10. 聊天消息框 ========== */
-    .chat-box {{
-        background: rgba(25,20,15,0.92) !important;
-        border-left: 4px solid var(--highlight-gold) !important;
-        padding: 15px 20px !important;
-        margin: 15px 0 !important;
-        color: var(--text-primary) !important;
-        box-shadow: inset 0 0 15px rgba(0,0,0,0.6) !important;
-    }}
-    
-    /* ========== 11. 动画 ========== */
-    @keyframes flicker {{
-        0% {{ opacity: 0.7; }}
-        50% {{ opacity: 1; }}
-        100% {{ opacity: 0.8; }}
-    }}
-    
-    @keyframes pulse {{
-        0% {{ transform: scale(1); }}
-        50% {{ transform: scale(1.03); }}
-        100% {{ transform: scale(1); }}
-    }}
-    
-    .loading-text {{ animation: flicker 1.5s infinite alternate; }}
-    .mode-confirm {{ animation: pulse 1.5s infinite; }}
-    
-    /* ========== 12. 滚动条 ========== */
     ::-webkit-scrollbar {{ width: 8px !important; }}
-    ::-webkit-scrollbar-track {{ background: rgba(0,0,0,0.8) !important; }}
-    ::-webkit-scrollbar-thumb {{ background: rgba(166,124,59,0.5) !important; border-radius: 4px !important; }}
+    ::-webkit-scrollbar-thumb {{ background: rgba(166,124,59,0.5) !important; }}
     </style>
     '''
 
@@ -241,6 +160,8 @@ if "generated_mods" not in st.session_state:
     st.session_state.generated_mods = []
 if "is_generating" not in st.session_state:
     st.session_state.is_generating = False
+if "final_prompt" not in st.session_state:
+    st.session_state.final_prompt = ""
 
 
 # ========================
@@ -251,18 +172,13 @@ def get_background_base64():
         bg_path = os.path.join(os.path.dirname(__file__), "封面图.png")
         if os.path.exists(bg_path):
             with open(bg_path, "rb") as f:
-                bg64 = base64.b64encode(f.read()).decode()
-                print(f"✅ 背景图加载成功：{bg_path}")
-                return bg64
+                return base64.b64encode(f.read()).decode()
         
-        # 备用网络图片
-        print("⚠️ 本地背景图未找到，使用网络备用图")
         url = 'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?auto=format&fit=crop&w=2073&q=80'
         with urllib.request.urlopen(url) as response:
             return base64.b64encode(response.read()).decode()
     except Exception as e:
         print(f"❌ 背景图加载失败：{e}")
-        # 纯色黑色背景备用
         return None
 
 
@@ -271,11 +187,9 @@ bg_url = f'data:image/png;base64,{bg_base64}' if bg_base64 else '#000000'
 
 
 # ========================
-# 🎨 注入主题 (最最前面执行！)
+# 🎨 注入主题
 # ========================
 print("=== 启动 App ===")
-print(f"背景图 URL: {bg_url[:50]}..." if len(bg_url) > 50 else f"背景图 URL: {bg_url}")
-
 theme_css = get_theme_css(bg_url)
 st.markdown(theme_css, unsafe_allow_html=True)
 
@@ -290,24 +204,24 @@ banner_html = '''
     
     <hr style="width:50%;border:none;border-top:2px solid #5a3a1a;margin:25px auto;opacity:0.7;">
     
-    <p style="font-family:'IM Fell English SC';color:#d4c4a0;line-height:1.8;font-size:1.15rem;max-width:850px;margin:0 auto 35px;background:transparent!important;">
+    <p style="font-family:'IM Fell English SC';color:#d4c4a0;line-height:1.8;font-size:1.15rem;max-width:850px;margin:0 auto 35px;">
     当理智的 san 值归零，现实的法则在此崩塌。<br>
-    <span style="color:#88aa66;text-shadow:0 0 10px rgba(136,170,102,0.5);">You are no longer a survivor, but a Creator of Nightmares.</span><br>
+    <span style="color:#88aa66;">You are no longer a survivor, but a Creator of Nightmares.</span><br>
     你不再是苟延残喘的求生者，而是编织噩梦的造物主。<br>
-    <span style="color:#88aa66;text-shadow:0 0 10px rgba(136,170,102,0.5);">Weave your madness into the Constant.</span>
+    <span style="color:#88aa66;">Weave your madness into the Constant.</span>
     </p>
     
     <hr style="width:40%;border:none;border-top:2px solid #5a3a1a;margin:30px auto;opacity:0.7;">
     
     <div style="display:flex;gap:25px;flex-wrap:wrap;justify-content:center;margin-top:30px;">
-        <div class="info-card" style="flex:1;min-width:300px;background:rgba(30,20,10,0.85)!important;border:2px solid #aa7733;padding:25px;">
+        <div style="flex:1;min-width:300px;background:rgba(30,20,10,0.85)!important;border:2px solid #aa7733;padding:25px;">
             <div style="font-family:'Creepster';color:#ffaa60;font-size:1.7rem;text-align:center;margin-bottom:15px;">🔥 快速生成 / RAPID</div>
-            <p style="font-family:'IM Fell English SC';color:#d4c4a0;font-size:0.95rem;line-height:1.7;margin-top:10px;text-align:center;">适用于意志坚定的造物主。当你已明确 Mod 的核心机制与物品属性，无需犹豫，直接将构想铸造成可下载的文件。<br><span style="color:#888;font-size:0.8em;display:block;margin-top:12px;font-style:italic;">For when your vision is clear. Forge it now.</span></p>
+            <p style="font-family:'IM Fell English SC';color:#d4c4a0;font-size:0.95rem;line-height:1.7;margin-top:10px;text-align:center;">适用于意志坚定的造物主。当你已明确 Mod 的核心机制与物品属性，无需犹豫，直接将构想铸造成可下载的文件。</p>
         </div>
         
-        <div class="info-card" style="flex:1;min-width:300px;background:rgba(20,30,20,0.85)!important;border:2px solid #668844;padding:25px;">
+        <div style="flex:1;min-width:300px;background:rgba(20,30,20,0.85)!important;border:2px solid #668844;padding:25px;">
             <div style="font-family:'Creepster';color:#aadd88;font-size:1.7rem;text-align:center;margin-bottom:15px;">👁️ 探索设计 / EXPLORE</div>
-            <p style="font-family:'IM Fell English SC';color:#d4c4a0;font-size:0.95rem;line-height:1.7;margin-top:10px;text-align:center;">适用于在迷雾中低语的探索者。当灵感混沌不清，与暗影对话以理清思路，在反复试探中让疯狂的蓝图逐渐清晰。<br><span style="color:#888;font-size:0.8em;display:block;margin-top:12px;font-style:italic;">For when inspiration is foggy. Talk to the Shadow.</span></p>
+            <p style="font-family:'IM Fell English SC';color:#d4c4a0;font-size:0.95rem;line-height:1.7;margin-top:10px;text-align:center;">适用于在迷雾中低语的探索者。当灵感混沌不清，与暗影对话以理清思路，在反复试探中让疯狂的蓝图逐渐清晰。</p>
         </div>
     </div>
 </div>
@@ -344,20 +258,47 @@ if st.session_state.mode != "home":
         "generated": ("✅", "#66aa66", "**Mod 已完成**")
     }
     icon, color, text = mode_config.get(st.session_state.mode, ("❓", "#888", "**未知模式**"))
-    st.markdown(f'<div class="mode-confirm" style="text-align:center;padding:15px;margin:20px 0;background:rgba(0,0,0,0.5)!important;border:2px dashed {color};"><h3 style="color:{color};font-family:Creepster;">{icon} {text}</h3></div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="text-align:center;padding:15px;margin:20px 0;background:rgba(0,0,0,0.5)!important;border:2px dashed {color};"><h3 style="color:{color};font-family:Creepster;">{icon} {text}</h3></div>', unsafe_allow_html=True)
 
 
 # ========================
-# 💬 聊天输入处理
+# 💬 探索模式 - 添加生成按钮
 # ========================
 if st.session_state.mode == "explore":
-    st.info("💬 **与暗影对话以明确设计思路**")
+    st.info("💬 **与暗影对话以明确设计思路**<br>Talk to the Shadow to refine your ideas", unsafe_allow_html=True)
+    
     user_input = st.chat_input("描述你的想法...")
     if user_input and not st.session_state.is_generating:
         st.session_state.messages.append({"role": "user", "content": user_input})
         st.session_state.is_generating = True
         st.rerun()
+    
+    # ⭐⭐⭐⭐⭐ 核心修复：生成 Mod 按钮 ⭐⭐⭐⭐⭐
+    # 当对话达到一定条数时显示生成按钮
+    if len(st.session_state.messages) >= 2:
+        st.markdown("---")
+        st.markdown("""
+        <div style="text-align:center;margin:20px 0;padding:15px;background:rgba(30,20,10,0.8);border:2px solid #FFD700;border-radius:8px;">
+            <h4 style="font-family:Creepster;color:#FFD700;margin:0;">✨ 准备好生成 Mod 了吗？</h4>
+            <p style="color:#aaa;font-size:0.9rem;margin:5px 0 0;">将您的对话内容整理为完整的 Mod 代码</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col1_gen, col2_gen = st.columns([4, 1])
+        with col2_gen:
+            if st.button("✨ 生成最终 Mod", key="gen_from_explore", use_container_width=True, type="primary"):
+                # 整理所有对话上下文
+                summary = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
+                st.session_state.final_prompt = summary
+                
+                st.session_state.mode = "generating"
+                st.session_state.is_generating = True
+                st.rerun()
 
+
+# ========================
+# 💬 快速生成模式
+# ========================
 elif st.session_state.mode == "rapid":
     user_input = st.chat_input("输入你的完整 Mod 构想...")
     if user_input and not st.session_state.is_generating:
@@ -371,7 +312,7 @@ elif st.session_state.mode == "rapid":
 # ========================
 if st.session_state.is_generating:
     loading_html = '''<div style="text-align:center;padding:40px;margin:30px 0;">
-        <h2 class="loading-text" style="font-family:'Creepster';color:#FFD700;font-size:2.5rem;text-shadow:0 0 15px rgba(255,215,0,0.7);">世界正在扭曲......<br>REALITY IS WARPING...</h2>
+        <h2 style="font-family:'Creepster';color:#FFD700;font-size:2.5rem;text-shadow:0 0 15px rgba(255,215,0,0.7);animation:flicker 1.5s infinite alternate;">世界正在扭曲......<br>REALITY IS WARPING...</h2>
         <p style="font-family:'Griffy';color:#aa8855;font-size:1.2rem;margin-top:20px;">暗影正在编织你的疯狂......<br>The shadows are weaving your madness...</p>
         <div style="margin-top:30px;font-size:2rem;color:#A67C3B;animation:rotate 3s linear infinite;">✦</div>
     </div>'''
@@ -381,24 +322,36 @@ if st.session_state.is_generating:
     
     try:
         if st.session_state.mode == "explore":
-            result = explore_with_llm(st.session_state.messages)
+            result = design_with_llm(st.session_state.final_prompt)
         else:
             result = design_with_llm(st.session_state.messages[0]['content'])
         
-        st.session_state.messages.append({"role": "assistant", "content": result.get('text', '暗影已回应...')})
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": result.get('text', '暗影已回应...')
+        })
         
+        # 保存 Mod 数据
         mod_data = result.get('data', {})
-        if mod_data and st.session_state.mode == "rapid":
-            st.session_state.generated_mods.append({
+        if mod_data:
+            new_mod = {
                 "id": len(st.session_state.generated_mods) + 1,
-                "name": mod_data.get('name', '新 Mod'),
+                "name": mod_data.get('name', f"Mod #{len(st.session_state.generated_mods)+1}"),
                 "desc": mod_data.get('desc', ''),
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M")
-            })
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "lua_code": mod_data.get('lua_code', ''),
+                "modinfo": mod_data.get('modinfo', '')
+            }
+            st.session_state.generated_mods.append(new_mod)
+    
     except Exception as e:
-        st.session_state.messages.append({"role": "assistant", "content": f"❌ 生成失败：{str(e)}"})
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": f"❌ 生成失败：{str(e)}"
+        })
     
     st.session_state.is_generating = False
+    st.session_state.mode = "generated"
     st.rerun()
 
 
@@ -411,15 +364,13 @@ if st.session_state.messages:
             role = msg.get('role', 'user')
             content = msg.get('content', '')
             color = '#FF8C00' if role == 'user' else '#4CAF50'
-            name = '🧙‍♂️ 求生者 / SURVIVOR' if role == 'user' else '👁️ 暗影 / SHADOW'
-            chat_html = f'<div class="chat-box" style="border-left-color:{color}!important;"><b style="font-family:Creepster;color:{color};font-size:1.2rem;">{name}</b><br><span style="font-size:1.1rem;line-height:1.7;">{content}</span></div>'
+            name = '🧙‍️ 求生者 / SURVIVOR' if role == 'user' else '👁️ 暗影 / SHADOW'
+            chat_html = f'<div style="background:rgba(25,20,15,0.9)!important;border-left:4px solid {color}!important;padding:15px 20px!important;margin:15px 0!important;color:#F5E6C8;font-family:\'IM Fell English SC\',serif!important;"><b style="font-family:Creepster;color:{color};font-size:1.2rem;">{name}</b><br><span style="font-size:1.1rem;line-height:1.7;">{content}</span></div>'
             st.markdown(chat_html, unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="chat-box">{msg}</div>', unsafe_allow_html=True)
 
 
 # ========================
-# 📦 侧边栏
+# 📦 侧边栏 - Mod 库 + 下载功能
 # ========================
 with st.sidebar:
     st.markdown("### 📦 Mod 库")
@@ -434,62 +385,46 @@ with st.sidebar:
     st.divider()
     st.write(f"💬 对话：{len(st.session_state.messages)} 条")
     
+    # ⭐⭐⭐⭐⭐ Mod 下载功能 ⭐⭐⭐⭐⭐
     if st.session_state.generated_mods:
         st.markdown("---")
         mod = st.session_state.generated_mods[-1]
-        st.markdown(f'<div style="background:rgba(30,20,10,0.8)!important;border:2px solid #FFD700;padding:15px;"><h4 style="font-family:Creepster;color:#FFD700;margin-top:0;">⬇️ 下载 Mod</h4><p style="color:#aaa;font-size:0.9rem;margin-bottom:15px;">{mod.get("desc", "")}</p></div>', unsafe_allow_html=True)
         
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("💾 下载", key=f"download_{mod['id']}", use_container_width=True):
-                st.success(f"{mod['name']} 已开始下载!")
-        with col2:
-            if st.button("🔄 重新生成", key=f"regen_{mod['id']}", use_container_width=True):
-                st.info("正在重新生成该 Mod...")
+        st.markdown("""
+        <div style="background:rgba(30,20,10,0.8)!important;border:2px solid #FFD700;padding:15px;box-shadow:0 0 20px rgba(255,215,0,0.2);">
+            <h4 style="font-family:Creepster;color:#FFD700;margin-top:0;">⬇️ 下载 Mod</h4>
+            <p style="color:#aaa;font-size:0.9rem;margin-bottom:15px;">Download Your Creation</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 创建 ZIP 文件下载
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # 添加 modinfo.lua
+            zip_file.writestr("modinfo.lua", mod.get("modinfo", ""))
+            # 添加 main.lua
+            zip_file.writestr("main.lua", mod.get("lua_code", "") or "print('Hello DST Mod')")
+        
+        zip_buffer.seek(0)
+        
+        col1_dl, col2_dl = st.columns(2)
+        with col1_dl:
+            st.download_button(
+                label="💾 下载 .ZIP",
+                data=zip_buffer.getvalue(),
+                file_name=f"{mod['name'].replace(' ', '_')}.zip",
+                mime="application/zip",
+                use_container_width=True,
+                type="primary"
+            )
+        with col2_dl:
+            if st.button("🔄 重新生成", use_container_width=True):
+                st.session_state.mode = "explore"
+                st.session_state.messages = []
+                st.rerun()
     
     st.divider()
     if st.button("🗑️ 清除记录"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
-```
-
----
-
-## 🎯 关键修复点
-
-| 修复项 | CSS 规则 | 说明 |
-|--------|---------|------|
-| **全黑背景** | `--black-bg: rgba(0,0,0,1)` | 纯黑作为备用 |
-| **双层遮罩** | `body::before` + `body::after` | 确保背景图在最底层 |
-| **超强力覆盖** | 10+个选择器加`!important` | 优先于所有默认样式 |
-| **z-index** | `-1000` 到 `-999` | 背景在最底 |
-| **Console 日志** | 打印背景图 URL | 方便调试 |
-
----
-
-## ✅ 部署步骤
-
-### 1. GitHub上传
-```bash
-git add app.py
-git commit -m "Fix white background issue - force black"
-git push
-```
-
-### 2. Streamlit Cloud查看控制台日志
-应该看到：
-```
-=== 启动 App ===
-✅ 背景图加载成功：...
-或
-⚠️ 本地背景图未找到，使用网络备用图
-```
-
-### 3. 如果还有白色区域
-在浏览器按 F12 → Console 输入：
-```javascript
-document.body.style.backgroundColor = 'black';
-```
-
-现在刷新页面，整个界面应该都是纯黑/深色背景了！如果还有问题请告诉我具体位置～
