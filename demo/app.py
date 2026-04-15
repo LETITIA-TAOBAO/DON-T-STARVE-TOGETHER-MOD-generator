@@ -11,12 +11,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
 # =========================
-# LLM导入（安全版）
+# LLM导入（现在 qwen_client 和 app.py 同级）
 # =========================
 try:
+    # 注意：这里直接导入，不再使用 llm.qwen_client
     from qwen_client import design_with_llm, explore_with_llm
 except Exception:
-    st.error("LLM模块加载失败")
+    st.error("LLM模块加载失败，请确保 qwen_client.py 在 app.py 同级目录下")
     st.error(traceback.format_exc())
     st.stop()
 
@@ -31,7 +32,7 @@ st.set_page_config(page_title="AI Mod Generator", layout="wide")
 
 
 # =========================
-# 背景图
+# 背景图处理
 # =========================
 def get_base64_image(path):
     try:
@@ -46,6 +47,7 @@ bg_base64 = get_base64_image(os.path.join(BASE_DIR, "封面图.png"))
 # =========================
 # Theme（安全注入）
 # =========================
+# ⚠️ 如果页面还是全黑/全图，请在这里把下面这两行注释掉进行测试
 if bg_base64:
     st.markdown(inject_theme(bg_base64), unsafe_allow_html=True)
 
@@ -74,9 +76,6 @@ st.markdown("""
 
 render_banner()
 
-st.write("DEBUG: page loaded")  # 🔥调试点
-
-
 # =========================
 # 模式选择
 # =========================
@@ -88,11 +87,13 @@ with col1:
     if st.button("🚀 快速生成", use_container_width=True):
         st.session_state.mode = "fast"
         st.session_state.messages = []
+        st.rerun() # 强制刷新状态
 
 with col2:
     if st.button("🧠 探索设计", use_container_width=True):
         st.session_state.mode = "explore"
         st.session_state.messages = []
+        st.rerun() # 强制刷新状态
 
 
 # =========================
@@ -114,11 +115,15 @@ elif st.session_state.mode == "fast":
             with st.spinner("AI正在构建世界..."):
                 try:
                     result = design_with_llm(user_input)
+                    # 🚀 核心修正：从字典中提取 text
+                    display_text = result["text"] if isinstance(result, dict) else result
                 except Exception:
-                    result = traceback.format_exc()
+                    display_text = traceback.format_exc()
 
             st.markdown("## 🧠 设计方案")
-            st.markdown(result)
+            st.markdown(display_text)
+        else:
+            st.warning("请输入你的想法后再生成哦！")
 
 
 # =========================
@@ -135,14 +140,17 @@ elif st.session_state.mode == "explore":
         })
 
         try:
-            reply = explore_with_llm(st.session_state.messages)
+            reply_obj = explore_with_llm(st.session_state.messages)
+            # 🚀 核心修正：从字典中提取 text
+            reply_text = reply_obj["text"] if isinstance(reply_obj, dict) else reply_obj
         except Exception:
-            reply = traceback.format_exc()
+            reply_text = traceback.format_exc()
 
         st.session_state.messages.append({
             "role": "assistant",
-            "content": reply
+            "content": reply_text
         })
+        st.rerun()
 
     render_chat(st.session_state.messages)
 
@@ -166,11 +174,13 @@ elif st.session_state.mode == "generate":
     with st.spinner("AI正在生成最终设计..."):
         try:
             result = design_with_llm(st.session_state.final_input)
+            # 🚀 核心修正：从字典中提取 text
+            display_text = result["text"] if isinstance(result, dict) else result
         except Exception:
-            result = traceback.format_exc()
+            display_text = traceback.format_exc()
 
     st.markdown("## 🧠 最终设计")
-    st.markdown(result)
+    st.markdown(display_text)
 
     if st.button("🔁 返回首页"):
         st.session_state.mode = "home"
@@ -181,5 +191,9 @@ elif st.session_state.mode == "generate":
 # DEBUG SIDEBAR
 # =========================
 with st.sidebar:
-    st.write("Mode:", st.session_state.mode)
-    st.write("Messages:", len(st.session_state.messages))
+    st.write("Current Mode:", st.session_state.mode)
+    st.write("Chat Messages:", len(st.session_state.messages))
+    if st.button("🗑️ 重置所有状态"):
+        for key in st.session_state.keys():
+            del st.session_state[key]
+        st.rerun()
