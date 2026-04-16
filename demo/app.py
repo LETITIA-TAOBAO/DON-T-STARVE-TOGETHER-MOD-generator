@@ -53,7 +53,7 @@ BASE_URL = (
     "https://raw.githubusercontent.com/LETITIA-TAOBAO/"
     "DON-T-STARVE-TOGETHER-MOD-generator/main/demo/assets/"
 )
-BG_URL = BASE_URL + "background.jpg.png"
+BG_URL = BASE_URL + "background.jpg.jpg"
 
 # ========================
 # 🎨 CSS
