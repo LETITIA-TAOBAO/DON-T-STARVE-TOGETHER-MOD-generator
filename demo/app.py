@@ -40,6 +40,8 @@ for key, val in {
     "stage":              "chat",
     "generating":         False,
     "sound_audio_cache":  {},
+    "show_producer_msg":  False,
+    "show_install_guide": False,
 }.items():
     if key not in st.session_state:
         st.session_state[key] = val
@@ -56,6 +58,53 @@ BG_URL = BASE_URL + "background.jpg.png"
 # ========================
 # 🎨 CSS
 # ========================
+# 只在主页注入 creator-tag 样式
+_creator_tag_css = ""
+if st.session_state.mode == "home":
+    _creator_tag_css = """
+/* ── 创作者信息水印（仅主页） ── */
+.creator-tag {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    z-index: 9999;
+    text-align: right;
+    pointer-events: auto;
+    background: rgba(15,8,2,0.88);
+    border: 2px solid rgba(139,100,32,0.5);
+    border-radius: 6px;
+    padding: 14px 20px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+    opacity: 0.85;
+    transition: all 0.3s ease;
+}
+.creator-tag:hover {
+    opacity: 1.0;
+    border-color: rgba(200,168,75,0.75);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.8), 0 0 20px rgba(200,168,75,0.2);
+}
+.creator-tag p {
+    font-family: 'Cinzel', serif !important;
+    font-size: 0.75rem !important;
+    color: #C8A868 !important;
+    letter-spacing: 2px !important;
+    margin: 4px 0 !important;
+    line-height: 1.7 !important;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.9) !important;
+}
+.creator-tag .creator-name {
+    font-weight: 600 !important;
+    color: #D4A843 !important;
+    font-size: 0.82rem !important;
+}
+.creator-tag .creator-divider {
+    border: none;
+    border-top: 1px solid rgba(139,100,32,0.4);
+    margin: 8px 0;
+    width: 100%;
+}
+"""
+
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&display=swap');
@@ -304,6 +353,10 @@ audio {{
     background:rgba(20,11,3,0.74) !important;
     border:1px solid #4a3010 !important; border-radius:4px !important;
 }}
+.st-expander [data-testid="stMarkdownContainer"] p {{
+    margin: 4px 0 !important;
+    line-height: 1.5 !important;
+}}
 hr {{
     border:none !important;
     border-top:1px solid rgba(139,100,32,0.28) !important;
@@ -313,35 +366,7 @@ hr {{
 ::-webkit-scrollbar-track {{ background:rgba(10,5,0,0.3); }}
 ::-webkit-scrollbar-thumb {{ background:#5a3810; border-radius:3px; }}
 
-/* ── 创作者信息水印 ── */
-.creator-tag {{
-    position: fixed;
-    bottom: 18px;
-    right: 22px;
-    z-index: 9999;
-    text-align: right;
-    pointer-events: auto;
-    opacity: 0.55;
-    transition: opacity 0.3s ease;
-}}
-.creator-tag:hover {{
-    opacity: 1.0;
-}}
-.creator-tag p {{
-    font-family: 'Cinzel', serif !important;
-    font-size: 0.62rem !important;
-    color: #8B6420 !important;
-    letter-spacing: 2px !important;
-    margin: 2px 0 !important;
-    line-height: 1.6 !important;
-    text-shadow: 1px 1px 3px rgba(0,0,0,0.9) !important;
-}}
-.creator-tag .creator-divider {{
-    border: none;
-    border-top: 1px solid rgba(139,100,32,0.35);
-    margin: 4px 0;
-    width: 100%;
-}}
+{_creator_tag_css}
 </style>
 """, unsafe_allow_html=True)
 
@@ -403,7 +428,7 @@ def make_zip(mod: dict) -> bytes:
 ③ 启动游戏 → 主菜单 → 模组
    找到本 Mod → 点击启用
 
-④ 创建或进入存档，Mod 即刻生效
+④ 创建或进入存档,Mod 即刻生效
 
 ⚠️ 注意：
   - api_version 必须为 10
@@ -460,6 +485,8 @@ def reset_to_home():
         "preview_approved":  False,
         "generating":        False,
         "sound_audio_cache": {},
+        # 关闭弹窗状态，防止残留
+        "show_producer_msg": False,
     })
 
 
@@ -599,7 +626,6 @@ def render_sound_preview(sound: dict):
 
     cache = st.session_state.sound_audio_cache
 
-    # ── 各触发音效 ──
     for i, sfx in enumerate(sfx_list):
         trigger   = sfx.get("trigger", f"音效{i+1}")
         desc_cn   = sfx.get("description_cn", "")
@@ -620,8 +646,8 @@ def render_sound_preview(sound: dict):
             entry = cache[cache_key]
             if entry.get("ok"):
                 if entry.get("source") == "synth":
-                    params = entry.get("synth_params", {})
-                    html   = _synth_audio_html(params, f"sfx{i}")
+                    html = _synth_audio_html(entry.get("synth_params", {}),
+                                             f"sfx{i}")
                     st.components.v1.html(html, height=55)
                 else:
                     fmt = entry.get("format", "wav")
@@ -655,7 +681,6 @@ def render_sound_preview(sound: dict):
                     st.session_state.sound_audio_cache[cache_key] = result
                 st.rerun()
 
-    # ── 环境音 ──
     if ambient.get("needed"):
         amb_desc   = ambient.get("description_cn", "")
         amb_prompt = ambient.get("prompt_en", "")
@@ -675,8 +700,8 @@ def render_sound_preview(sound: dict):
             entry = cache[amb_key]
             if entry.get("ok"):
                 if entry.get("source") == "synth":
-                    params = entry.get("synth_params", {})
-                    html   = _synth_audio_html(params, "ambient")
+                    html = _synth_audio_html(entry.get("synth_params", {}),
+                                             "ambient")
                     st.components.v1.html(html, height=55)
                 else:
                     fmt = entry.get("format", "wav")
@@ -702,7 +727,6 @@ def render_sound_preview(sound: dict):
                     st.session_state.sound_audio_cache[amb_key] = result
                 st.rerun()
 
-    # ── 一键全部生成 ──
     all_keys = [f"sfx_{i}" for i in range(len(sfx_list))]
     if ambient.get("needed"):
         all_keys.append("sfx_ambient")
@@ -752,7 +776,6 @@ def render_preview_stage():
     </div>
     """, unsafe_allow_html=True)
 
-    # ── 规格卡 ──
     st.markdown('<div class="preview-box">', unsafe_allow_html=True)
     st.markdown('<p class="preview-box-title">📋 MOD 设计规格</p>',
                 unsafe_allow_html=True)
@@ -799,7 +822,6 @@ def render_preview_stage():
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ── 图片 + 音效 ──
     col_img, col_snd = st.columns([1, 1])
 
     with col_img:
@@ -842,7 +864,6 @@ def render_preview_stage():
 
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ── 确认按钮 ──
     st.markdown("""
     <p style="text-align:center;font-size:0.82rem;color:#4a3820;
               font-style:italic;margin-bottom:10px;letter-spacing:1px;">
@@ -1096,7 +1117,99 @@ def render_done_stage():
 
 
 # ══════════════════════════════════════════════════════════════
-# 🏠 主页
+# 📖 弹窗：创作者想说（定义必须在调用前）
+# ══════════════════════════════════════════════════════════════
+
+@st.dialog("✦ 创作者想说 ✦", width="large")
+def show_producer_message():
+    st.markdown("""
+    <div style="font-family:'IM Fell English SC',serif;font-size:1rem;
+                line-height:2;color:#D4BC88;text-align:justify;">
+        <p style="margin-bottom:18px;">
+            这个 <strong>MOD 生成器</strong>诞生于对《饥荒联机版》的热爱，
+            以及对<strong>创造自由</strong>的向往。
+        </p>
+        <p style="margin-bottom:18px;">
+            它的核心使命是：<strong style="color:#FFD700;">让每一位想在游戏世界中自由创造、
+            但不会编写代码的玩家，都能实现真正的"创造模式"</strong>。
+        </p>
+        <p style="margin-bottom:18px;">通过这个工具，你可以：</p>
+        <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
+            <li>设计全新的 <strong>BOSS</strong> 与挑战机制</li>
+            <li>创造独特的<strong>游戏玩法</strong>与互动系统</li>
+            <li>为建家党打造<strong>自定义元素</strong>与精美贴图</li>
+            <li>实现你脑海中任何疯狂的游戏创意</li>
+        </ul>
+        <p style="margin-bottom:18px;font-style:italic;color:#B89A62;">
+            ⚠️ 当前版本限制：<strong>一轮对话只能创建一个贴图</strong>，
+            但我们正在持续升级中……
+        </p>
+        <p style="margin-bottom:18px;">
+            <strong style="color:#C8A84B;">未来我们将支持：</strong>
+        </p>
+        <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
+            <li>多贴图批量生成</li>
+            <li>动画序列帧自动合成</li>
+            <li>更复杂的游戏逻辑编排</li>
+            <li>可视化 MOD 配置面板</li>
+        </ul>
+        <p style="text-align:center;margin-top:28px;color:#D4A843;
+                  font-style:italic;font-size:1.1rem;letter-spacing:2px;">
+            ✦ 愿你的创造力在永恒大陆中永不熄灭 ✦
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("关闭", use_container_width=True, key="close_producer"):
+        st.session_state.show_producer_msg = False
+        st.rerun()
+
+
+# ══════════════════════════════════════════════════════════════
+# 📖 弹窗：MOD 安装教程
+# ══════════════════════════════════════════════════════════════
+
+@st.dialog("📖 MOD 安装 & 使用教程", width="large")
+def show_install_guide():
+    st.markdown("### 一、下载 MOD")
+    st.write("在左侧「**MOD 典藏库**」中点击 **「⬇ 下载 MOD 包」**，获得 `.zip` 压缩包。")
+
+    st.markdown("### 二、安装步骤")
+    st.write("1. **解压**下载的 ZIP 文件")
+    st.write("2. 将解压后的**文件夹**（非 ZIP 文件）复制到 MOD 目录：")
+    st.code("C:/Users/你的用户名/Documents/Klei/DoNotStarveTogether/mods/",
+            language="")
+    st.caption("👆 Windows 路径")
+    st.code("Steam/steamapps/common/Don't Starve Together/mods/", language="")
+    st.caption("👆 Steam 安装目录")
+    st.write("3. 启动游戏 → 主菜单 → **「模组」**")
+    st.write("4. 在列表中找到你的 MOD → 点击**「启用」**")
+    st.write("5. 创建或进入存档，MOD 即刻生效 ✨")
+
+    st.markdown("### 三、注意事项")
+    st.warning("⚠️ MOD 的 `api_version` 必须为 **10**")
+    st.warning("⚠️ 多人游戏时，**所有玩家**都需安装相同 MOD")
+    st.info("💡 如遇问题，检查游戏日志文件：")
+    st.code("Documents/Klei/DoNotStarveTogether/client_log.txt", language="")
+
+    st.markdown("### 四、进阶使用")
+    st.write("• 音效文件已自动打包到 `sounds/` 目录")
+    st.write("• 贴图文件位于 `images/` 目录")
+    st.write("• 可手动编辑 `modmain.lua` 自定义功能")
+
+    st.markdown("---")
+    st.markdown(
+        "<p style='text-align:center;color:#D4A843;font-style:italic;'>"
+        "✦ 祝你在永恒大陆玩得愉快 ✦</p>",
+        unsafe_allow_html=True)
+
+    if st.button("关闭", use_container_width=True, key="close_install"):
+        st.session_state.show_install_guide = False
+        st.rerun()
+
+
+# ══════════════════════════════════════════════════════════════
+# 🏠 主页（创作者信息和按钮都在这里）
 # ══════════════════════════════════════════════════════════════
 
 def render_home():
@@ -1152,6 +1265,7 @@ def render_home():
                 "mode": "rapid", "stage": "chat",
                 "messages": [], "final_design": "",
                 "design_spec": None, "sound_audio_cache": {},
+                "show_producer_msg": False,
             })
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
@@ -1163,9 +1277,32 @@ def render_home():
                 "mode": "explore", "stage": "chat",
                 "messages": [], "final_design": "",
                 "design_spec": None, "sound_audio_cache": {},
+                "show_producer_msg": False,
             })
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
+
+    # ══ 创作者信息框（仅主页渲染）══
+    st.markdown("""
+    <div class="creator-tag">
+        <p class="creator-name">✦ PRODUCER · LETITIA ✦</p>
+        <hr class="creator-divider">
+        <p>1135462669@qq.com</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ══ 创作者想说按钮（仅主页渲染）══
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    col_left, col_center, col_right = st.columns([1, 2, 1])
+    with col_center:
+        if st.button("💭 创作者想说 · FROM PRODUCER",
+                     use_container_width=True, key="btn_producer_msg"):
+            st.session_state.show_producer_msg = True
+            st.rerun()
+
+    # ══ 弹窗触发（仅主页）══
+    if st.session_state.show_producer_msg:
+        show_producer_message()
 
 
 # ══════════════════════════════════════════════════════════════
@@ -1204,9 +1341,12 @@ with st.sidebar:
         for mod in reversed(st.session_state.generated_mods):
             label = f"📜 {mod.get('name_cn') or mod['name']}"
             with st.expander(label):
-                st.caption(f"{mod['date']}  ·  {mod['name']}")
+                st.markdown(f"**{mod['date']}**  ·  `{mod['name']}`")
                 if mod.get("desc"):
-                    st.caption(mod["desc"])
+                    desc_text = mod["desc"]
+                    if len(desc_text) > 100:
+                        desc_text = desc_text[:100] + "..."
+                    st.caption(desc_text)
                 if mod.get("image_url"):
                     st.image(mod["image_url"], width=110)
                 z = make_zip(mod)
@@ -1226,8 +1366,16 @@ with st.sidebar:
                         "messages": [{"role": "user",
                                       "content": mod.get("design", "")}],
                         "sound_audio_cache": {},
+                        "show_producer_msg": False,
                     })
                     st.rerun()
+
+    st.divider()
+
+    if st.button("📖 MOD 安装教程",
+                 use_container_width=True, key="btn_install_guide"):
+        st.session_state.show_install_guide = True
+        st.rerun()
 
     st.divider()
     st.caption(f"本次对话：{len(st.session_state.messages)} 条")
@@ -1238,15 +1386,6 @@ with st.sidebar:
             del st.session_state[k]
         st.rerun()
 
-
-# ══════════════════════════════════════════════════════════════
-# 🖋 创作者信息（右下角固定，全页面常驻）
-# ══════════════════════════════════════════════════════════════
-
-st.markdown("""
-<div class="creator-tag">
-    <p>✦ PRODUCER · LETITIA ✦</p>
-    <hr class="creator-divider">
-    <p>1135462669@qq.com</p>
-</div>
-""", unsafe_allow_html=True)
+# ══ 安装教程弹窗（全局，侧边栏触发，所有页面可用）══
+if st.session_state.show_install_guide:
+    show_install_guide()
