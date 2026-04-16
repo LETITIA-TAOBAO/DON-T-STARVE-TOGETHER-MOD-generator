@@ -20,7 +20,7 @@ try:
         generate_sound_effect,
     )
 except ImportError as e:
-    st.error(f"❌ 模块加载失败：{e}")
+    st.error(f"❌ 永恒大陆加载失败：{e}")
     st.stop()
 
 # ========================
@@ -119,20 +119,28 @@ p,span,div,label,li {{
     font-family:'Cinzel',serif !important; color:#7B5820 !important;
     font-size:0.8rem; letter-spacing:4px; margin-top:5px;
 }}
-.banner-divider {{ border:none; border-top:1px solid #5a3a10; width:40%; margin:16px auto; }}
+.banner-divider {{
+    border:none; border-top:1px solid #5a3a10;
+    width:40%; margin:16px auto;
+}}
 .banner-quote {{
     font-family:'IM Fell English SC',serif !important;
-    font-size:0.98rem; line-height:1.9; color:#C8A86A !important; font-style:italic;
+    font-size:0.98rem; line-height:1.9;
+    color:#C8A86A !important; font-style:italic;
 }}
 
-.mode-cards {{ display:flex; gap:24px; justify-content:center; margin:0 auto 28px; max-width:880px; }}
+.mode-cards {{
+    display:flex; gap:24px; justify-content:center;
+    margin:0 auto 28px; max-width:880px;
+}}
 .mode-card {{
     flex:1; max-width:420px; background:rgba(18,10,3,0.84);
     border:2px solid #5a3a10; border-radius:6px; padding:26px 22px 22px;
-    text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.5); position:relative; overflow:hidden;
+    text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.5);
+    position:relative; overflow:hidden;
 }}
 .mode-card::before {{
-    content:""; position:absolute; top:0;left:0;right:0; height:3px;
+    content:""; position:absolute; top:0; left:0; right:0; height:3px;
     background:linear-gradient(90deg,transparent,#C8A84B,transparent);
 }}
 .mode-card-icon  {{ font-size:2.2rem; margin-bottom:8px; display:block; }}
@@ -142,11 +150,20 @@ p,span,div,label,li {{
 }}
 .mode-card-sub {{
     font-family:'Cinzel',serif !important; font-size:0.7rem !important;
-    color:#7a5a28 !important; letter-spacing:3px; margin-bottom:12px !important; display:block;
+    color:#7a5a28 !important; letter-spacing:3px;
+    margin-bottom:12px !important; display:block;
 }}
-.mode-card-divider {{ border:none; border-top:1px solid #3a2008; margin:10px auto; width:60%; }}
-.mode-card-desc {{ font-size:0.88rem !important; line-height:1.8 !important; color:#B89A62 !important; margin:0 !important; }}
-.mode-card-en {{ font-style:italic !important; color:#5a4020 !important; font-size:0.76em !important; display:block !important; margin-top:10px !important; }}
+.mode-card-divider {{
+    border:none; border-top:1px solid #3a2008; margin:10px auto; width:60%;
+}}
+.mode-card-desc {{
+    font-size:0.88rem !important; line-height:1.8 !important;
+    color:#B89A62 !important; margin:0 !important;
+}}
+.mode-card-en {{
+    font-style:italic !important; color:#5a4020 !important;
+    font-size:0.76em !important; display:block !important; margin-top:10px !important;
+}}
 .mode-card-hint {{
     display:inline-block; margin-top:16px; padding:5px 18px;
     border:1px solid #7B5820; border-radius:3px;
@@ -170,7 +187,8 @@ div[data-testid="stButton"]>button:hover {{
 }}
 .primary-btn div[data-testid="stButton"]>button {{
     background:rgba(55,22,5,0.92) !important; border:2px solid #C8A84B !important;
-    font-size:1.08rem !important; padding:13px 32px !important; letter-spacing:2px !important;
+    font-size:1.08rem !important; padding:13px 32px !important;
+    letter-spacing:2px !important;
 }}
 .primary-btn div[data-testid="stButton"]>button:hover {{
     background:rgba(85,35,8,0.97) !important;
@@ -217,7 +235,8 @@ div[data-testid="stButton"]>button:hover {{
 }}
 .preview-box-title {{
     font-family:'Cinzel Decorative',serif !important; font-size:1.05rem !important;
-    color:#D4A843 !important; text-align:center; margin-bottom:14px !important; letter-spacing:2px;
+    color:#D4A843 !important; text-align:center;
+    margin-bottom:14px !important; letter-spacing:2px;
 }}
 .spec-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }}
 .spec-item {{
@@ -240,8 +259,13 @@ div[data-testid="stButton"]>button:hover {{
     font-family:'Cinzel',serif !important; font-size:0.70rem !important;
     color:#4A9A50 !important; letter-spacing:2px; display:block; margin-bottom:3px;
 }}
-.sound-desc {{ font-size:0.87rem !important; color:#C0D8C0 !important; display:block; margin-bottom:4px; }}
-.sound-prompt {{ font-size:0.68rem !important; color:#3a5a3a !important; font-style:italic !important; }}
+.sound-desc {{
+    font-size:0.87rem !important; color:#C0D8C0 !important;
+    display:block; margin-bottom:4px;
+}}
+.sound-prompt {{
+    font-size:0.68rem !important; color:#3a5a3a !important; font-style:italic !important;
+}}
 
 audio {{
     width:100%; height:34px; margin-top:6px;
@@ -255,22 +279,69 @@ audio {{
     padding:30px; text-align:center; margin:14px auto; max-width:600px;
 }}
 
-[data-testid="stChatInput"] {{ background:rgba(15,8,2,0.82) !important; border-top:1px solid rgba(139,100,32,0.35) !important; }}
+[data-testid="stChatInput"] {{
+    background:rgba(15,8,2,0.82) !important;
+    border-top:1px solid rgba(139,100,32,0.35) !important;
+}}
 [data-testid="stChatInput"] textarea {{
     background:rgba(20,11,3,0.93) !important; border:1px solid #4a3010 !important;
-    color:#EDD9A3 !important; font-family:'IM Fell English SC',serif !important; border-radius:4px !important;
+    color:#EDD9A3 !important; font-family:'IM Fell English SC',serif !important;
+    border-radius:4px !important;
 }}
-[data-testid="stChatInput"] textarea:focus {{ border-color:#C8A84B !important; box-shadow:0 0 10px rgba(200,168,75,0.18) !important; }}
-[data-testid="stChatInput"] textarea::placeholder {{ color:#5a4028 !important; font-style:italic !important; }}
+[data-testid="stChatInput"] textarea:focus {{
+    border-color:#C8A84B !important;
+    box-shadow:0 0 10px rgba(200,168,75,0.18) !important;
+}}
+[data-testid="stChatInput"] textarea::placeholder {{
+    color:#5a4028 !important; font-style:italic !important;
+}}
 
 .stProgress>div>div>div>div {{
-    background:linear-gradient(90deg,#6B3A08,#C8A84B,#F0D070) !important; border-radius:4px !important;
+    background:linear-gradient(90deg,#6B3A08,#C8A84B,#F0D070) !important;
+    border-radius:4px !important;
 }}
-.st-expander {{ background:rgba(20,11,3,0.74) !important; border:1px solid #4a3010 !important; border-radius:4px !important; }}
-hr {{ border:none !important; border-top:1px solid rgba(139,100,32,0.28) !important; margin:16px 0 !important; }}
+.st-expander {{
+    background:rgba(20,11,3,0.74) !important;
+    border:1px solid #4a3010 !important; border-radius:4px !important;
+}}
+hr {{
+    border:none !important;
+    border-top:1px solid rgba(139,100,32,0.28) !important;
+    margin:16px 0 !important;
+}}
 ::-webkit-scrollbar {{ width:6px; }}
 ::-webkit-scrollbar-track {{ background:rgba(10,5,0,0.3); }}
 ::-webkit-scrollbar-thumb {{ background:#5a3810; border-radius:3px; }}
+
+/* ── 创作者信息水印 ── */
+.creator-tag {{
+    position: fixed;
+    bottom: 18px;
+    right: 22px;
+    z-index: 9999;
+    text-align: right;
+    pointer-events: auto;
+    opacity: 0.55;
+    transition: opacity 0.3s ease;
+}}
+.creator-tag:hover {{
+    opacity: 1.0;
+}}
+.creator-tag p {{
+    font-family: 'Cinzel', serif !important;
+    font-size: 0.62rem !important;
+    color: #8B6420 !important;
+    letter-spacing: 2px !important;
+    margin: 2px 0 !important;
+    line-height: 1.6 !important;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.9) !important;
+}}
+.creator-tag .creator-divider {{
+    border: none;
+    border-top: 1px solid rgba(139,100,32,0.35);
+    margin: 4px 0;
+    width: 100%;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -288,7 +359,6 @@ def generate_atlas_xml() -> str:
 
 
 def fetch_image(prompt: str, negative: str = "") -> dict:
-    """调用 Pollinations.ai 生成饥荒风格图片"""
     try:
         full_negative = (
             "realistic, 3d render, photographic, bright saturated colors, "
@@ -306,7 +376,9 @@ def fetch_image(prompt: str, negative: str = "") -> dict:
         )
         r = requests.get(url, timeout=60)
         if r.status_code == 200 and len(r.content) > 1000:
-            return {"ok": True, "b64": base64.b64encode(r.content).decode(), "url": url}
+            return {"ok": True,
+                    "b64": base64.b64encode(r.content).decode(),
+                    "url": url}
         return {"ok": False, "err": f"HTTP {r.status_code}"}
     except Exception as e:
         return {"ok": False, "err": str(e)}
@@ -336,6 +408,10 @@ def make_zip(mod: dict) -> bytes:
 ⚠️ 注意：
   - api_version 必须为 10
   - 多人游戏所有玩家需安装
+
+══════════════════════════════════════
+    CREATED BY DST MOD GENERATOR
+         PRODUCER · LETITIA
 ══════════════════════════════════════
 """
     buf = io.BytesIO()
@@ -388,12 +464,21 @@ def reset_to_home():
 
 
 # ══════════════════════════════════════════════════════════════
-# 🔊 音效合成 HTML 生成
+# 🔊 音效合成 HTML
 # ══════════════════════════════════════════════════════════════
 
 def _synth_audio_html(params: dict, element_id: str) -> str:
-    """生成 Web Audio API 合成音效的 HTML/JS"""
-    p = params
+    p           = params
+    safe_id     = element_id.replace("-", "_")
+    stype       = p.get("type", "sound").upper()
+    dur         = p.get("duration", 0.5)
+    osc_type    = p.get("oscillator", "triangle")
+    freq_start  = p.get("frequency_start", 300)
+    freq_end    = max(p.get("frequency_end", 150), 20)
+    gain_start  = p.get("gain_start", 0.5)
+    gain_end    = max(p.get("gain_end", 0.01), 0.001)
+    noise_mix   = p.get("noise_mix", 0.2)
+
     vibrato_js = ""
     if p.get("vibrato"):
         vibrato_js = """
@@ -419,16 +504,6 @@ def _synth_audio_html(params: dict, element_id: str) -> str:
         lfo2.start(now);
         lfo2.stop(now + dur);
         """
-
-    safe_id     = element_id.replace("-", "_")
-    stype       = p.get("type", "sound").upper()
-    dur         = p.get("duration", 0.5)
-    osc_type    = p.get("oscillator", "triangle")
-    freq_start  = p.get("frequency_start", 300)
-    freq_end    = max(p.get("frequency_end", 150), 20)
-    gain_start  = p.get("gain_start", 0.5)
-    gain_end    = max(p.get("gain_end", 0.01), 0.001)
-    noise_mix   = p.get("noise_mix", 0.2)
 
     return f"""
     <div style="background:rgba(15,30,15,0.70);border:1px solid #2a4a2a;
@@ -507,7 +582,6 @@ def _synth_audio_html(params: dict, element_id: str) -> str:
 # ══════════════════════════════════════════════════════════════
 
 def render_sound_preview(sound: dict):
-    """渲染可试听的音效方案"""
     st.markdown('<div class="preview-box">', unsafe_allow_html=True)
     st.markdown('<p class="preview-box-title">🔊 音效方案</p>',
                 unsafe_allow_html=True)
@@ -574,7 +648,7 @@ def render_sound_preview(sound: dict):
                     del st.session_state.sound_audio_cache[cache_key]
                     st.rerun()
         else:
-            if st.button(f"🎵 生成试听",
+            if st.button("🎵 生成试听",
                          key=f"gen_sfx_{i}", use_container_width=True):
                 with st.spinner(f"✦ 召唤「{trigger}」音效……"):
                     result = generate_sound_effect(keywords, prompt_en, duration)
@@ -725,7 +799,7 @@ def render_preview_stage():
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ── 图片 + 音效 并列 ──
+    # ── 图片 + 音效 ──
     col_img, col_snd = st.columns([1, 1])
 
     with col_img:
@@ -819,7 +893,6 @@ def render_generating_stage():
 
     bar = st.progress(0)
 
-    # Step 1: 生成代码
     with st.spinner("✦ 暗影法典正在书写 Lua 代码……"):
         bar.progress(20)
         result = design_with_llm(
@@ -828,19 +901,17 @@ def render_generating_stage():
         )
     bar.progress(45)
 
-    # Step 2: 附加图标
-    with st.spinner("✦ 封印图腾形象……"):
+    with st.spinner("✦ 封印永恒形象……"):
         b64 = st.session_state.get("preview_image_b64")
         if b64:
             result.setdefault("data", {}).setdefault("files", {})
             result["data"]["files"]["modicon.tex"] = base64.b64decode(b64)
             result["data"]["files"]["modicon.xml"] = generate_atlas_xml()
-            st.success("✦ 图腾已封印！")
+            st.success("✦ 永恒形象已封印！")
         else:
-            st.warning("图腾形象缺失，跳过。")
+            st.warning("永恒形象缺失，跳过。")
     bar.progress(65)
 
-    # Step 3: 打包音效
     with st.spinner("✦ 封印音效……"):
         cache    = st.session_state.get("sound_audio_cache", {})
         sound    = st.session_state.get("sound_result", {}) or {}
@@ -853,7 +924,6 @@ def render_generating_stage():
             if key in cache and cache[key].get("ok"):
                 entry = cache[key]
                 if entry.get("source") == "synth":
-                    # 合成音暂不打包（浏览器端合成无法导出wav）
                     continue
                 trig = sfx.get("trigger", "sfx").replace(" ", "_")
                 fmt  = entry.get("format", "wav")
@@ -873,7 +943,6 @@ def render_generating_stage():
             st.info("音效为合成预览，未打包到MOD中。可后续手动添加。")
     bar.progress(85)
 
-    # Step 4: 归档
     with st.spinner("✦ 归入典藏……"):
         st.session_state.messages.append({
             "role":    "assistant",
@@ -895,7 +964,7 @@ def render_generating_stage():
             })
     bar.progress(100)
 
-    st.session_state.stage     = "done"
+    st.session_state.stage      = "done"
     st.session_state.generating = False
     st.rerun()
 
@@ -905,14 +974,13 @@ def render_generating_stage():
 # ══════════════════════════════════════════════════════════════
 
 def _enter_preview():
-    """点击「预览并确认」后：总结设计 + 生成图片 + 生成音效"""
-    with st.spinner("✦ 暗影正在整理设计蓝图……"):
+    with st.spinner("✦ 永恒大陆的使者正在整理设计蓝图……"):
         spec = summarize_design(st.session_state.messages)
         st.session_state.design_spec  = spec
         st.session_state.final_design = json.dumps(
             spec, ensure_ascii=False, indent=2)
 
-    with st.spinner("✦ 召唤图腾形象（饥荒风格）……"):
+    with st.spinner("✦ 召唤永恒形象……"):
         visual   = optimize_visual_prompt(spec)
         st.session_state.visual_result = visual
         prompt   = visual.get("optimized_prompt",
@@ -927,7 +995,6 @@ def _enter_preview():
         sound = generate_sound_prompts(spec)
         st.session_state.sound_result = sound
 
-    # 清空旧的音效缓存
     st.session_state.sound_audio_cache = {}
     st.session_state.stage = "preview"
     st.rerun()
@@ -940,26 +1007,26 @@ def render_chat_stage(mode: str):
         st.markdown("""
         <div class="mode-header">
           <h3 style="color:#4CAF50 !important;">👁 迷雾探路者 · Shadow Explore</h3>
-          <p>与暗影助手充分对话，明确设计后点击「预览并确认」</p>
+          <p>与永恒大陆的使者充分对话，明确设计后点击「预览并确认」</p>
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
         <div class="mode-header">
           <h3 style="color:#D4A843 !important;">⚡ 意志铸剑者 · Rapid Forge</h3>
-          <p>输入你的构想，暗影助手将细化设计，确认后点击「预览并确认」</p>
+          <p>输入你的构想，永恒大陆的使者将细化设计，确认后点击「预览并确认」</p>
         </div>
         """, unsafe_allow_html=True)
 
     render_chat(st.session_state.messages)
 
-    placeholder = ("低语你的构想，暗影将倾听……"
+    placeholder = ("低语你的构想，永恒大陆的使者将倾听……"
                    if is_explore else "将你的意志化为文字……")
     user_inp = st.chat_input(placeholder)
 
     if user_inp:
         st.session_state.messages.append({"role": "user", "content": user_inp})
-        with st.spinner("✦ 暗影正在回应……"):
+        with st.spinner("✦ 永恒大陆的使者正在回应……"):
             try:
                 if is_explore:
                     r = explore_with_llm(st.session_state.messages)
@@ -967,7 +1034,7 @@ def render_chat_stage(mode: str):
                     r = rapid_with_llm(st.session_state.messages)
                 reply = r.get("text", str(r)) if isinstance(r, dict) else str(r)
             except Exception as exc:
-                reply = f"（暗影沉默了：{exc}）"
+                reply = f"（永恒大陆沉默了：{exc}）"
         st.session_state.messages.append({"role": "assistant", "content": reply})
         st.rerun()
 
@@ -1170,3 +1237,16 @@ with st.sidebar:
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
+
+
+# ══════════════════════════════════════════════════════════════
+# 🖋 创作者信息（右下角固定，全页面常驻）
+# ══════════════════════════════════════════════════════════════
+
+st.markdown("""
+<div class="creator-tag">
+    <p>✦ PRODUCER · LETITIA ✦</p>
+    <hr class="creator-divider">
+    <p>1135462669@qq.com</p>
+</div>
+""", unsafe_allow_html=True)
