@@ -1271,7 +1271,6 @@ with st.sidebar:
 # 🖋 创作者信息（右下角固定，全页面常驻）
 # ══════════════════════════════════════════════════════════════
 
-# 渲染创作者信息卡片
 st.markdown("""
 <div class="creator-tag">
     <p class="creator-name">✦ PRODUCER · LETITIA ✦</p>
@@ -1280,7 +1279,11 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 在页面底部增加创作者想说按钮
+
+# ══════════════════════════════════════════════════════════════
+# 💭 创作者想说按钮（主内容区底部）
+# ══════════════════════════════════════════════════════════════
+
 st.markdown("<br><br>", unsafe_allow_html=True)
 col_left, col_center, col_right = st.columns([1, 2, 1])
 with col_center:
@@ -1293,170 +1296,96 @@ with col_center:
 # 📖 弹窗：创作者想说
 # ══════════════════════════════════════════════════════════════
 
+@st.dialog("✦ 创作者想说 ✦", width="large")
+def show_producer_message():
+    st.markdown("""
+    <div style="font-family:'IM Fell English SC',serif;font-size:1rem;
+                line-height:2;color:#D4BC88;text-align:justify;">
+        <p style="margin-bottom:18px;">
+            这个 <strong>MOD 生成器</strong>诞生于对《饥荒联机版》的热爱，
+            以及对<strong>创造自由</strong>的向往。
+        </p>
+        <p style="margin-bottom:18px;">
+            它的核心使命是：<strong style="color:#FFD700;">让每一位想在游戏世界中自由创造、
+            但不会编写代码的玩家，都能实现真正的"创造模式"</strong>。
+        </p>
+        <p style="margin-bottom:18px;">
+            通过这个工具，你可以：
+        </p>
+        <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
+            <li>设计全新的 <strong>BOSS</strong> 与挑战机制</li>
+            <li>创造独特的<strong>游戏玩法</strong>与互动系统</li>
+            <li>为建家党打造<strong>自定义元素</strong>与精美贴图</li>
+            <li>实现你脑海中任何疯狂的游戏创意</li>
+        </ul>
+        <p style="margin-bottom:18px;font-style:italic;color:#B89A62;">
+            ⚠️ 当前版本限制：<strong>一轮对话只能创建一个贴图</strong>，
+            但我们正在持续升级中……
+        </p>
+        <p style="margin-bottom:18px;">
+            <strong style="color:#C8A84B;">未来我们将支持：</strong>
+        </p>
+        <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
+            <li>多贴图批量生成</li>
+            <li>动画序列帧自动合成</li>
+            <li>更复杂的游戏逻辑编排</li>
+            <li>可视化 MOD 配置面板</li>
+        </ul>
+        <p style="text-align:center;margin-top:28px;color:#D4A843;
+                  font-style:italic;font-size:1.1rem;letter-spacing:2px;">
+            ✦ 愿你的创造力在永恒大陆中永不熄灭 ✦
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("关闭", use_container_width=True, key="close_producer"):
+        st.session_state.show_producer_msg = False
+        st.rerun()
+
 if st.session_state.show_producer_msg:
-    with st.container():
-        st.markdown("""
-        <div style="position:fixed;top:0;left:0;right:0;bottom:0;
-                    background:rgba(0,0,0,0.85);z-index:10000;
-                    display:flex;align-items:center;justify-content:center;
-                    backdrop-filter:blur(6px);">
-            <div style="background:rgba(15,8,2,0.98);border:3px solid #C8A84B;
-                        border-radius:10px;padding:40px;max-width:700px;width:90%;
-                        max-height:85vh;overflow-y:auto;
-                        box-shadow:0 10px 40px rgba(0,0,0,0.9),inset 0 0 40px rgba(0,0,0,0.5);
-                        position:relative;">
-                <h2 style="font-family:'Cinzel Decorative',serif;font-size:1.8rem;
-                           color:#D4A843;text-align:center;margin-bottom:24px;
-                           letter-spacing:4px;text-shadow:0 0 25px rgba(200,160,60,0.5);">
-                    ✦ 创作者想说 ✦
-                </h2>
-                <div style="font-family:'IM Fell English SC',serif;font-size:1rem;
-                            line-height:2;color:#D4BC88;text-align:justify;">
-                    <p style="margin-bottom:18px;">
-                        这个 <strong>MOD 生成器</strong>诞生于对《饥荒联机版》的热爱，
-                        以及对<strong>创造自由</strong>的向往。
-                    </p>
-                    <p style="margin-bottom:18px;">
-                        它的核心使命是：<strong style="color:#FFD700;">让每一位想在游戏世界中自由创造、
-                        但不会编写代码的玩家，都能实现真正的"创造模式"</strong>。
-                    </p>
-                    <p style="margin-bottom:18px;">
-                        通过这个工具，你可以：
-                    </p>
-                    <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
-                        <li>设计全新的 <strong>BOSS</strong> 与挑战机制</li>
-                        <li>创造独特的<strong>游戏玩法</strong>与互动系统</li>
-                        <li>为建家党打造<strong>自定义元素</strong>与精美贴图</li>
-                        <li>实现你脑海中任何疯狂的游戏创意</li>
-                    </ul>
-                    <p style="margin-bottom:18px;font-style:italic;color:#B89A62;">
-                        ⚠️ 当前版本限制：<strong>一轮对话只能创建一个贴图</strong>，
-                        但我们正在持续升级中……
-                    </p>
-                    <p style="margin-bottom:18px;">
-                        <strong style="color:#C8A84B;">未来我们将支持：</strong>
-                    </p>
-                    <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
-                        <li>多贴图批量生成</li>
-                        <li>动画序列帧自动合成</li>
-                        <li>更复杂的游戏逻辑编排</li>
-                        <li>可视化 MOD 配置面板</li>
-                    </ul>
-                    <p style="text-align:center;margin-top:28px;color:#D4A843;
-                              font-style:italic;font-size:1.1rem;letter-spacing:2px;">
-                        ✦ 愿你的创造力在永恒大陆中永不熄灭 ✦
-                    </p>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # 关闭按钮
-        if st.button("✕ 关闭", key="close_producer_msg", use_container_width=True):
-            st.session_state.show_producer_msg = False
-            st.rerun()
+    show_producer_message()
 
 
 # ══════════════════════════════════════════════════════════════
 # 📖 弹窗：MOD 安装教程
 # ══════════════════════════════════════════════════════════════
 
+@st.dialog("📖 MOD 安装 & 使用教程", width="large")
+def show_install_guide():
+    st.markdown("### 一、下载 MOD")
+    st.write("在左侧「**MOD 典藏库**」中点击 **「⬇ 下载 MOD 包」**，获得 `.zip` 压缩包。")
+    
+    st.markdown("### 二、安装步骤")
+    st.write("1. **解压**下载的 ZIP 文件")
+    st.write("2. 将解压后的**文件夹**（非 ZIP 文件）复制到 MOD 目录：")
+    
+    st.code("C:/Users/你的用户名/Documents/Klei/DoNotStarveTogether/mods/", language="")
+    st.caption("👆 Windows 路径")
+    
+    st.code("Steam/steamapps/common/Don't Starve Together/mods/", language="")
+    st.caption("👆 Steam 安装目录")
+    
+    st.write("3. 启动游戏 → 主菜单 → **「模组」**")
+    st.write("4. 在列表中找到你的 MOD → 点击**「启用」**")
+    st.write("5. 创建或进入存档，MOD 即刻生效 ✨")
+    
+    st.markdown("### 三、注意事项")
+    st.warning("⚠️ MOD 的 `api_version` 必须为 **10**")
+    st.warning("⚠️ 多人游戏时，**所有玩家**都需安装相同 MOD")
+    st.info("💡 如遇问题，检查游戏日志文件：")
+    st.code("Documents/Klei/DoNotStarveTogether/client_log.txt", language="")
+    
+    st.markdown("### 四、进阶使用")
+    st.write("• 音效文件已自动打包到 `sounds/` 目录")
+    st.write("• 贴图文件位于 `images/` 目录")
+    st.write("• 可手动编辑 `modmain.lua` 自定义功能")
+    
+    st.markdown("---")
+    st.markdown("<p style='text-align:center;color:#D4A843;font-style:italic;'>✦ 祝你在永恒大陆玩得愉快 ✦</p>", unsafe_allow_html=True)
+    
+    if st.button("关闭", use_container_width=True, key="close_install"):
+        st.session_state.show_install_guide = False
+        st.rerun()
+
 if st.session_state.show_install_guide:
-    with st.container():
-        st.markdown("""
-        <div style="position:fixed;top:0;left:0;right:0;bottom:0;
-                    background:rgba(0,0,0,0.85);z-index:10000;
-                    display:flex;align-items:center;justify-content:center;
-                    backdrop-filter:blur(6px);">
-            <div style="background:rgba(15,8,2,0.98);border:3px solid #C8A84B;
-                        border-radius:10px;padding:40px;max-width:750px;width:90%;
-                        max-height:85vh;overflow-y:auto;
-                        box-shadow:0 10px 40px rgba(0,0,0,0.9),inset 0 0 40px rgba(0,0,0,0.5);
-                        position:relative;">
-                <h2 style="font-family:'Cinzel Decorative',serif;font-size:1.8rem;
-                           color:#D4A843;text-align:center;margin-bottom:24px;
-                           letter-spacing:4px;text-shadow:0 0 25px rgba(200,160,60,0.5);">
-                    📖 MOD 安装 & 使用教程
-                </h2>
-                <div style="font-family:'IM Fell English SC',serif;font-size:0.98rem;
-                            line-height:1.9;color:#D4BC88;">
-                    
-                    <h3 style="color:#D4A843;margin:24px 0 14px 0;font-size:1.3rem;">
-                        一、下载 MOD
-                    </h3>
-                    <p>在左侧「<strong>MOD 典藏库</strong>」中点击
-                       <strong style="color:#C8A84B;">「⬇ 下载 MOD 包」</strong>，
-                       获得 <code style="background:rgba(200,168,75,0.15);padding:3px 8px;
-                       border-radius:4px;color:#FFD700;">.zip</code> 压缩包。</p>
-                    
-                    <h3 style="color:#D4A843;margin:24px 0 14px 0;font-size:1.3rem;">
-                        二、安装步骤
-                    </h3>
-                    <ol style="margin-left:28px;line-height:2;">
-                        <li><strong>解压</strong>下载的 ZIP 文件</li>
-                        <li>将解压后的<strong>文件夹</strong>（非 ZIP 文件）复制到 MOD 目录：
-                            <ul style="margin-left:24px;margin-top:10px;">
-                                <li><strong>Windows:</strong><br>
-                                    <code style="background:rgba(200,168,75,0.15);padding:4px 10px;
-                                          border-radius:4px;display:inline-block;margin-top:6px;
-                                          color:#FFD700;font-size:0.9rem;">
-                                    C:/Users/你的用户名/Documents/Klei/DoNotStarveTogether/mods/
-                                    </code>
-                                </li>
-                                <li style="margin-top:12px;"><strong>Steam 安装目录:</strong><br>
-                                    <code style="background:rgba(200,168,75,0.15);padding:4px 10px;
-                                          border-radius:4px;display:inline-block;margin-top:6px;
-                                          color:#FFD700;font-size:0.9rem;">
-                                    Steam/steamapps/common/Don't Starve Together/mods/
-                                    </code>
-                                </li>
-                            </ul>
-                        </li>
-                        <li style="margin-top:10px;">启动游戏 → 主菜单 → <strong>「模组」</strong></li>
-                        <li>在列表中找到你的 MOD → 点击<strong>「启用」</strong></li>
-                        <li>创建或进入存档，MOD 即刻生效 ✨</li>
-                    </ol>
-                    
-                    <h3 style="color:#D4A843;margin:24px 0 14px 0;font-size:1.3rem;">
-                        三、注意事项
-                    </h3>
-                    <ul style="margin-left:28px;line-height:2;">
-                        <li>⚠️ MOD 的 <code style="background:rgba(200,168,75,0.15);
-                            padding:2px 7px;border-radius:3px;color:#FFD700;">api_version</code> 
-                            必须为 <strong>10</strong></li>
-                        <li>⚠️ 多人游戏时，<strong>所有玩家</strong>都需安装相同 MOD</li>
-                        <li>💡 如遇问题，检查游戏日志文件：<br>
-                            <code style="background:rgba(200,168,75,0.15);padding:4px 10px;
-                                  border-radius:4px;display:inline-block;margin-top:6px;
-                                  color:#FFD700;font-size:0.9rem;">
-                            Documents/Klei/DoNotStarveTogether/client_log.txt
-                            </code>
-                        </li>
-                    </ul>
-                    
-                    <h3 style="color:#D4A843;margin:24px 0 14px 0;font-size:1.3rem;">
-                        四、进阶使用
-                    </h3>
-                    <p>• 音效文件已自动打包到 
-                       <code style="background:rgba(200,168,75,0.15);padding:2px 7px;
-                       border-radius:3px;color:#FFD700;">sounds/</code> 目录<br>
-                       • 贴图文件位于 
-                       <code style="background:rgba(200,168,75,0.15);padding:2px 7px;
-                       border-radius:3px;color:#FFD700;">images/</code> 目录<br>
-                       • 可手动编辑 
-                       <code style="background:rgba(200,168,75,0.15);padding:2px 7px;
-                       border-radius:3px;color:#FFD700;">modmain.lua</code> 自定义功能</p>
-                    
-                    <p style="text-align:center;margin-top:28px;color:#D4A843;
-                              font-style:italic;font-size:1.1rem;letter-spacing:2px;">
-                        ✦ 祝你在永恒大陆玩得愉快 ✦
-                    </p>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # 关闭按钮
-        if st.button("✕ 关闭", key="close_install_guide", use_container_width=True):
-            st.session_state.show_install_guide = False
-            st.rerun()
+    show_install_guide()
