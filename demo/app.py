@@ -34,15 +34,14 @@ for key, val in {
     "design_spec": None,
     "visual_result": None,
     "sound_result": None,
-    # 改为列表，支持多张图
-    "preview_images": [],          # [{"url":..., "b64":..., "label":...}, ...]
+    "preview_images": [],
     "preview_approved": False,
     "stage": "chat",
     "generating": False,
     "sound_audio_cache": {},
     "show_producer_msg": False,
     "show_install_guide": False,
-    "num_images": 1,               # 用户想要的贴图数量
+    "num_images": 1,
 }.items():
     if key not in st.session_state:
         st.session_state[key] = val
@@ -164,8 +163,7 @@ p,span,div,label,li {{
     flex:1; max-width:420px; background:rgba(18,10,3,0.84);
     border:2px solid #5a3a10; border-radius:6px;
     padding:26px 22px 22px; text-align:center;
-    box-shadow:0 4px 20px rgba(0,0,0,0.5);
-    position:relative; overflow:hidden;
+    box-shadow:0 4px 20px rgba(0,0,0,0.5); position:relative; overflow:hidden;
 }}
 .mode-card::before {{
     content:""; position:absolute; top:0; left:0; right:0; height:3px;
@@ -174,8 +172,7 @@ p,span,div,label,li {{
 .mode-card-icon  {{ font-size:2.2rem; margin-bottom:8px; display:block; }}
 .mode-card-title {{
     font-family:'Cinzel Decorative',serif !important;
-    font-size:1.1rem !important; color:#D4A843 !important;
-    margin:0 0 4px !important;
+    font-size:1.1rem !important; color:#D4A843 !important; margin:0 0 4px !important;
 }}
 .mode-card-sub {{
     font-family:'Cinzel',serif !important; font-size:0.7rem !important;
@@ -191,8 +188,7 @@ p,span,div,label,li {{
 }}
 .mode-card-en {{
     font-style:italic !important; color:#5a4020 !important;
-    font-size:0.76em !important; display:block !important;
-    margin-top:10px !important;
+    font-size:0.76em !important; display:block !important; margin-top:10px !important;
 }}
 .mode-card-hint {{
     display:inline-block; margin-top:16px; padding:5px 18px;
@@ -273,24 +269,6 @@ div[data-testid="stButton"]>button:hover {{
     text-align:center; margin-bottom:14px !important; letter-spacing:2px;
 }}
 
-/* 多图网格 */
-.img-grid {{
-    display:grid; gap:12px;
-}}
-.img-grid-1 {{ grid-template-columns: 1fr; }}
-.img-grid-2 {{ grid-template-columns: 1fr 1fr; }}
-.img-grid-3 {{ grid-template-columns: 1fr 1fr 1fr; }}
-.img-grid-4 {{ grid-template-columns: 1fr 1fr; }}
-.img-card {{
-    background:rgba(8,4,0,0.82); border:1px solid #4a3010;
-    border-radius:6px; padding:10px; text-align:center;
-}}
-.img-card-label {{
-    font-family:'Cinzel',serif !important; font-size:0.72rem !important;
-    color:#7a5a28 !important; letter-spacing:2px;
-    display:block; margin-top:6px;
-}}
-
 .spec-grid {{
     display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0;
 }}
@@ -300,24 +278,35 @@ div[data-testid="stButton"]>button:hover {{
 }}
 .spec-label {{
     font-family:'Cinzel',serif !important; font-size:0.68rem !important;
-    color:#7a5a28 !important; letter-spacing:2px;
-    display:block; margin-bottom:3px;
+    color:#7a5a28 !important; letter-spacing:2px; display:block; margin-bottom:3px;
 }}
 .spec-value {{ font-size:0.86rem !important; color:#D4BC88 !important; }}
 
 .sound-card {{
     background:rgba(8,20,10,0.82); border:1px solid #2a4a2a;
-    border-radius:5px; padding:11px 14px; margin:7px 0;
-    transition:border-color 0.2s;
+    border-radius:5px; padding:11px 14px; margin:7px 0; transition:border-color 0.2s;
 }}
 .sound-card:hover {{ border-color:#4A9A50; }}
 .sound-trigger {{
     font-family:'Cinzel',serif !important; font-size:0.70rem !important;
-    color:#4A9A50 !important; letter-spacing:2px;
-    display:block; margin-bottom:3px;
+    color:#4A9A50 !important; letter-spacing:2px; display:block; margin-bottom:3px;
 }}
-.sound-desc  {{ font-size:0.87rem !important; color:#C0D8C0 !important; display:block; margin-bottom:4px; }}
-.sound-prompt {{ font-size:0.68rem !important; color:#3a5a3a !important; font-style:italic !important; }}
+.sound-desc  {{
+    font-size:0.87rem !important; color:#C0D8C0 !important;
+    display:block; margin-bottom:4px;
+}}
+.sound-prompt {{
+    font-size:0.68rem !important; color:#3a5a3a !important; font-style:italic !important;
+}}
+
+.img-card {{
+    background:rgba(8,4,0,0.82); border:1px solid #4a3010;
+    border-radius:6px; padding:8px; text-align:center;
+}}
+.img-card-label {{
+    font-family:'Cinzel',serif !important; font-size:0.72rem !important;
+    color:#7a5a28 !important; letter-spacing:2px; display:block; margin-top:6px;
+}}
 
 audio {{
     width:100%; height:34px; margin-top:6px;
@@ -396,8 +385,7 @@ def fetch_image(prompt: str, negative: str = "") -> dict:
         url = (
             f"https://image.pollinations.ai/prompt/{enc}"
             f"?width=512&height=512&nologo=true"
-            f"&negative={neg_enc}"
-            f"&model=flux"
+            f"&negative={neg_enc}&model=flux"
             f"&seed={int(datetime.now().timestamp())}"
         )
         r = requests.get(url, timeout=60)
@@ -480,16 +468,44 @@ def reset_to_home():
         "num_images": 1,
     })
 
+
+def _image_variant_prompt(base_prompt: str, idx: int,
+                           total: int, spec: dict) -> str:
+    """优先读 all_prompts 中对应条目，否则降级为变体词"""
+    visual      = st.session_state.visual_result or {}
+    all_prompts = visual.get("all_prompts", [])
+
+    if idx < len(all_prompts):
+        return all_prompts[idx]["prompt"]
+
+    # 降级：在 base_prompt 基础上加变体词
+    variants = [
+        f"{base_prompt}, variant {idx+1}, slightly different composition",
+        f"{base_prompt}, different angle view, variant design {idx+1}",
+        f"{base_prompt}, alternate color variation {idx+1}, same style",
+        f"{base_prompt}, different lighting mood, variant {idx+1}",
+    ]
+    return variants[idx % len(variants)]
+
+
+def _image_label(idx: int, spec: dict, default: str) -> str:
+    """从 all_prompts 或 spec 中获取图片标签"""
+    visual      = st.session_state.visual_result or {}
+    all_prompts = visual.get("all_prompts", [])
+    if idx < len(all_prompts):
+        return all_prompts[idx].get("label", default)
+    return default
+
 # ══════════════════════════════════════════════════════════════
 # 🔊 音效合成 HTML
 # ══════════════════════════════════════════════════════════════
 
 def synth_audio_html(params: dict, element_id: str) -> str:
-    p        = params
-    safe_id  = element_id.replace("-", "")
-    stype    = p.get("type", "sound").upper()
-    dur      = p.get("duration", 0.5)
-    osc_type = p.get("oscillator", "triangle")
+    p          = params
+    safe_id    = element_id.replace("-", "")
+    stype      = p.get("type", "sound").upper()
+    dur        = p.get("duration", 0.5)
+    osc_type   = p.get("oscillator", "triangle")
     freq_start = p.get("frequency_start", 300)
     freq_end   = max(p.get("frequency_end", 150), 20)
     gain_start = p.get("gain_start", 0.5)
@@ -622,8 +638,8 @@ def render_sound_preview(sound: dict):
             entry = cache[cache_key]
             if entry.get("ok"):
                 if entry.get("source") == "synth":
-                    html = synth_audio_html(entry.get("synth_params", {}),
-                                            f"sfx{i}")
+                    html = synth_audio_html(
+                        entry.get("synth_params", {}), f"sfx{i}")
                     st.components.v1.html(html, height=55)
                 else:
                     fmt = entry.get("format", "wav")
@@ -668,8 +684,8 @@ def render_sound_preview(sound: dict):
             entry = cache[amb_key]
             if entry.get("ok"):
                 if entry.get("source") == "synth":
-                    html = synth_audio_html(entry.get("synth_params", {}),
-                                            "ambient")
+                    html = synth_audio_html(
+                        entry.get("synth_params", {}), "ambient")
                     st.components.v1.html(html, height=55)
                 else:
                     fmt = entry.get("format", "wav")
@@ -696,7 +712,7 @@ def render_sound_preview(sound: dict):
                 st.rerun()
 
     # 一键生成全部
-    all_keys  = [f"sfx_{i}" for i in range(len(sfx_list))]
+    all_keys = [f"sfx_{i}" for i in range(len(sfx_list))]
     if ambient.get("needed"):
         all_keys.append("sfx_ambient")
     uncached = [k for k in all_keys if k not in cache]
@@ -731,27 +747,8 @@ def render_sound_preview(sound: dict):
 # 🎨 多图预览组件
 # ══════════════════════════════════════════════════════════════
 
-def _image_variant_prompt(base_prompt: str, idx: int, total: int,
-                           spec: dict) -> str:
-    """为每张图生成略有差异的 prompt，避免完全相同"""
-    objects = spec.get("main_object", {})
-    name_cn = objects.get("name_cn", "物品")
-
-    # 从设计规格中提取花的种类信息（如果有）
-    effects = spec.get("special_effects", [])
-    recipe  = spec.get("recipe", [])
-
-    variants = [
-        f"{base_prompt}, variant {idx+1}, slightly different composition",
-        f"{base_prompt}, different angle view, variant design {idx+1}",
-        f"{base_prompt}, alternate color variation {idx+1}, same style",
-        f"{base_prompt}, different lighting mood, variant {idx+1}",
-    ]
-    return variants[idx % len(variants)]
-
-
 def render_image_gallery(visual: dict, spec: dict):
-    """渲染多图预览区（支持逐张重生成）"""
+    """渲染多图预览区，支持逐张重生成"""
     images   = st.session_state.preview_images
     n        = len(images)
     obj      = spec.get("main_object", {})
@@ -775,31 +772,34 @@ def render_image_gallery(visual: dict, spec: dict):
 
     # 每行最多 3 列
     cols_per_row = min(n, 3)
-    rows = [images[i:i+cols_per_row]
+    rows = [images[i:i + cols_per_row]
             for i in range(0, n, cols_per_row)]
 
     for row_imgs in rows:
         cols = st.columns(len(row_imgs))
-        for col, (img_data, global_idx) in zip(
-                cols, [(img, images.index(img)) for img in row_imgs]):
+        for col, img_data in zip(cols, row_imgs):
+            global_idx = images.index(img_data)
             with col:
+                st.markdown('<div class="img-card">', unsafe_allow_html=True)
                 if img_data.get("url"):
-                    st.image(img_data["url"],
-                             caption=img_data.get("label", name_cn),
-                             use_container_width=True)
+                    st.image(img_data["url"], use_container_width=True)
+                    st.markdown(
+                        f'<span class="img-card-label">'
+                        f'{img_data.get("label", name_cn)}</span>',
+                        unsafe_allow_html=True)
                 else:
                     st.markdown(
                         '<p style="color:#4a3820;text-align:center;'
                         'font-style:italic;padding:20px 0;">生成失败</p>',
                         unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
                 if st.button(f"🔄 重生成 #{global_idx+1}",
                              key=f"regen_img_{global_idx}",
                              use_container_width=True):
                     with st.spinner(f"✦ 重新召唤图腾 #{global_idx+1}……"):
                         var_prompt = _image_variant_prompt(
-                            prompt, global_idx,
-                            len(images), spec)
+                            prompt, global_idx, n, spec)
                         new_img = fetch_image(var_prompt, negative)
                         if new_img["ok"]:
                             st.session_state.preview_images[global_idx] = {
@@ -817,7 +817,7 @@ def render_image_gallery(visual: dict, spec: dict):
         st.markdown(
             f'<p style="font-size:0.68rem;color:#4a3820;font-style:italic;'
             f'text-align:center;margin-top:8px;">'
-            f'{used[:100]}{"…" if len(used)>100 else ""}</p>',
+            f'{used[:100]}{"…" if len(used) > 100 else ""}</p>',
             unsafe_allow_html=True)
 
     # 一键重生成全部
@@ -827,8 +827,9 @@ def render_image_gallery(visual: dict, spec: dict):
             new_images = []
             for idx in range(n):
                 var_prompt = _image_variant_prompt(prompt, idx, n, spec)
+                label      = (images[idx].get("label", name_cn)
+                              if idx < len(images) else name_cn)
                 img = fetch_image(var_prompt, negative)
-                label = images[idx].get("label", name_cn) if idx < len(images) else name_cn
                 new_images.append({
                     "url":   img["url"] if img["ok"] else None,
                     "b64":   img["b64"] if img["ok"] else None,
@@ -864,7 +865,9 @@ def render_preview_stage():
     <div class="spec-grid">
       <div class="spec-item">
         <span class="spec-label">MOD NAME</span>
-        <span class="spec-value">{spec.get("mod_name_cn","—")} · {spec.get("mod_name_en","—")}</span>
+        <span class="spec-value">
+          {spec.get("mod_name_cn","—")} · {spec.get("mod_name_en","—")}
+        </span>
       </div>
       <div class="spec-item">
         <span class="spec-label">TYPE</span>
@@ -912,20 +915,33 @@ def render_preview_stage():
           ✦ 选择需要生成的贴图数量
         </p>
         """, unsafe_allow_html=True)
+
+        # 从 all_prompts 获取推荐数量
+        all_prompts     = visual.get("all_prompts", [])
+        suggested_count = len(all_prompts) if all_prompts else 1
+        suggested_count = max(1, min(suggested_count, 4))
+
         col_n1, col_n2, col_n3 = st.columns([1, 2, 1])
         with col_n2:
+            # 如果 LLM 给出了推荐数量，显示提示
+            if suggested_count > 1:
+                st.markdown(
+                    f'<p style="text-align:center;font-size:0.78rem;'
+                    f'color:#7a5a28;margin-bottom:4px;">'
+                    f'✦ 根据设计，推荐生成 {suggested_count} 张</p>',
+                    unsafe_allow_html=True)
+
             num = st.select_slider(
                 "贴图数量",
                 options=[1, 2, 3, 4],
-                value=st.session_state.num_images,
+                value=min(suggested_count, 4),
                 key="num_images_slider",
                 label_visibility="collapsed",
             )
             st.session_state.num_images = num
             st.markdown(
                 f'<p style="text-align:center;font-size:0.78rem;'
-                f'color:#5a4020;margin-top:4px;">'
-                f'将生成 {num} 张贴图变体</p>',
+                f'color:#5a4020;margin-top:4px;">将生成 {num} 张贴图</p>',
                 unsafe_allow_html=True)
 
         col_g1, col_g2, col_g3 = st.columns([1, 2, 1])
@@ -940,26 +956,26 @@ def render_preview_stage():
                 new_images = []
                 prog = st.progress(0)
                 for idx in range(num):
-                    with st.spinner(f"✦ 生成图腾 {idx+1}/{num}……"):
+                    label = _image_label(idx, spec, f"{name_cn} #{idx+1}")
+                    with st.spinner(f"✦ 生成「{label}」({idx+1}/{num})……"):
                         var_prompt = _image_variant_prompt(
                             prompt, idx, num, spec)
                         img = fetch_image(var_prompt, negative)
                         new_images.append({
                             "url":   img["url"] if img["ok"] else None,
                             "b64":   img["b64"] if img["ok"] else None,
-                            "label": f"{name_cn} #{idx+1}",
+                            "label": label,
                         })
                     prog.progress((idx + 1) / num)
                 st.session_state.preview_images = new_images
                 st.rerun()
+
         st.markdown("<hr>", unsafe_allow_html=True)
 
     # ── 图片 + 音效并排 ─────────────────────────────────
     col_img, col_snd = st.columns([1, 1])
-
     with col_img:
         render_image_gallery(visual, spec)
-
     with col_snd:
         render_sound_preview(sound)
 
@@ -973,8 +989,8 @@ def render_preview_stage():
     </p>
     """, unsafe_allow_html=True)
 
-    col_forge1, col_forge2, col_forge3 = st.columns([1, 2, 1])
-    with col_forge2:
+    col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
+    with col_f2:
         st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
         if st.button("⚙ 确认并铸造 MOD · Forge",
                      key="confirm_forge", use_container_width=True):
@@ -983,13 +999,13 @@ def render_preview_stage():
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    col_back1, col_back2 = st.columns(2)
-    with col_back1:
+    col_b1, col_b2 = st.columns(2)
+    with col_b1:
         if st.button("✏ 继续调整设计",
                      key="back_to_chat", use_container_width=True):
             st.session_state.stage = "chat"
             st.rerun()
-    with col_back2:
+    with col_b2:
         st.markdown('<div class="danger-btn">', unsafe_allow_html=True)
         if st.button("✕ 放弃，返回主页",
                      key="abort_preview", use_container_width=True):
@@ -1084,18 +1100,17 @@ def render_generating_stage():
         })
         d = result.get("data", {})
         if d:
-            # 存第一张图 URL 用于侧边栏缩略图
             first_url = (st.session_state.preview_images[0]["url"]
                          if st.session_state.preview_images else None)
             st.session_state.generated_mods.append({
-                "id":        len(st.session_state.generated_mods) + 1,
-                "name":      d.get("name", spec.get("mod_name_en",
-                             f"Mod_{datetime.now().strftime('%H%M')}")),
-                "name_cn":   spec.get("mod_name_cn", ""),
-                "desc":      d.get("desc", spec.get("description", "")),
-                "date":      datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "design":    st.session_state.final_design,
-                "spec":      spec,
+                "id":       len(st.session_state.generated_mods) + 1,
+                "name":     d.get("name", spec.get("mod_name_en",
+                            f"Mod_{datetime.now().strftime('%H%M')}")),
+                "name_cn":  spec.get("mod_name_cn", ""),
+                "desc":     d.get("desc", spec.get("description", "")),
+                "date":     datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "design":   st.session_state.final_design,
+                "spec":     spec,
                 "all_files": d.get("files", {}),
                 "image_url": first_url,
                 "all_images": [img.get("url") for img in
@@ -1127,7 +1142,7 @@ def _enter_preview():
         sound = generate_sound_prompts(spec)
         st.session_state.sound_result = sound
 
-    # 重置图片列表，让用户在预览页自行选数量并生成
+    # 重置状态，让用户在预览页自行选数量并生成
     st.session_state.preview_images    = []
     st.session_state.sound_audio_cache = {}
     st.session_state.num_images        = 1
@@ -1267,7 +1282,6 @@ def show_producer_message():
       </p>
     </div>
     """, unsafe_allow_html=True)
-
     if st.button("关闭", use_container_width=True, key="close_producer"):
         st.session_state.show_producer_msg = False
         st.rerun()
@@ -1309,7 +1323,6 @@ def show_install_guide():
         "<p style='text-align:center;color:#D4A843;font-style:italic;'>"
         "✦ 祝你在永恒大陆玩得愉快 ✦</p>",
         unsafe_allow_html=True)
-
     if st.button("关闭", use_container_width=True, key="close_install"):
         st.session_state.show_install_guide = False
         st.rerun()
@@ -1451,7 +1464,7 @@ with st.sidebar:
                         desc_text = desc_text[:100] + "..."
                     st.caption(desc_text)
 
-                # 侧边栏显示所有贴图缩略图
+                # 显示所有贴图缩略图（最多3张）
                 all_imgs = mod.get("all_images", [])
                 if all_imgs:
                     thumb_cols = st.columns(min(len(all_imgs), 3))
