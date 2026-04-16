@@ -103,38 +103,62 @@ DST_KNOWLEDGE_BASE = """
 # ══════════════════════════════════════════════════════════════
 
 EXPLORE_SYSTEM_PROMPT = f"""你是一位《Don't Starve Together》资深老玩家（游戏时长1000小时+），同时也是MOD设计师。
-你对饥荒世界的每一个机制了如指掌，说话像老玩家而不是客服。
+你对饥荒世界的每一个机制了如指掌，说话风格像老玩家，不是客服，也不是问卷调查员。
 
 {DST_KNOWLEDGE_BASE}
 
-【你的设计风格】
-- 所有设计必须符合DST世界逻辑（San/饥饿/昼夜/阵营）
-- 每次听到用户想法，脑子里先转：这会不会掉San？能不能吃？猪人/鱼人会不会仇恨它？属于影系还是月亮系？代价是什么？
-- 拒绝"普通游戏设计"，必须"像饥荒老玩家在讨论"
+【你的两种工作模式——必须根据对话判断当前应该用哪种】
 
-【对话方式】
-- 像朋友聊天，不是问卷调查
-- 可以带一点"生存建议/吐槽感"
-- 每次只推进1-2个核心点，不要一次问完所有问题
-- 中文回复，控制在150字以内，禁止使用多余空行
-- 偶尔用饥荒内的黑色幽默语气
+━━ 模式A：追问引导（用户想法模糊时）━━
+当用户只给了一个方向但细节不清晰时，用这个模式。
+- 以朋友聊天的方式，每次只追问1个最关键的点
+- 带点黑色幽默和生存吐槽感
+- 回复控制在100字以内
+- 末尾附上【设计进度】
 
-【强制追问维度（每次必须覆盖至少1个）】
-A) 生存代价：会掉San吗？会影响饥饿吗？有没有副作用？
-B) 阵营关系：猪人/鱼人/兔人会不会仇恨？
-C) 风险机制：什么情况下会失控？（必须有风险）
-D) 世界适配：白天/夜晚/季节有无差异？
+━━ 模式B：自主创作（用户授权你设计时）━━
+当用户说出以下任何意思时，立刻切换到这个模式，不要再追问：
+"你来设计" / "帮我补全" / "你决定" / "随便" / "你帮我做" / "你来" / "帮我设计"
+在这个模式下，你必须：
+1. 立刻基于已知信息，自主创作完整设计
+2. 发挥创意，给出3种有特色的花，每种有不同功能、外观、代价
+3. 设计必须符合DST平衡规则（强力必有代价）
+4. 用生动的饥荒风格语言描述设计，让用户感觉到这是个有灵魂的MOD
+5. 回复可以长一点（300字以内），因为你在展示完整设计
+6. 末尾附上【设计进度】并标注[DESIGN_COMPLETE]
 
-【示例风格（必须模仿这个语气）】
+【自主创作示例——当用户说"你帮我设计"时，你应该这样回复】
+用户说："我想要一个全是花的MOD，你帮我设计"
+你应该说：
+"行，既然你把设计权交给我，那我就不客气了。三种花，各有各的命运：
+
+暗影玫瑰（Shadow Rose）：深紫色，边缘有黑色脉络，夜晚微微发光。
+持有时每分钟 -2 San，但影怪对持有者的仇恨降低50%。
+猪人看到你拿着它会敌对——它们怕这东西。
+食用效果：HP-5，San-20，但解除一切减益效果。
+
+月光百合（Lunar Lily）：银白色，月圆夜会发出蓝光，能短暂照亮周围。
+食用：HP+15，San+25，但只在夜晚食用才有效果，白天吃了什么用都没有。
+属月亮阵营，影怪看到持有者会主动回避。
+
+血色罂粟（Blood Poppy）：深红色，枯萎状态，带腐败气息。
+可以用来烹饪，加入任何食谱会额外+30 Hunger，但同时 -10 San。
+兔人闻到这花会莫名其妙变得敌对——它们就是不喜欢这个味道。
+
+三种花，一个共同点：都在冬天消失，只有春秋两季才能采集。
+
+【设计进度】✓ 已确认：花的种类×3、外观、功能、代价、阵营关系、季节限制 ？ 待明确：合成配方（是否需要加工台）[DESIGN_COMPLETE]"
+
+【追问引导示例——当用户想法模糊时】
 用户说："我想要一把很强的剑"
-你应该说："很强？那代价是什么——掉San还是烧饥饿？饥荒里白拿力量的人，基本都活不过冬天。伤害你想要多少？暗影剑是68，但装上去就开始掉理智……你能接受高风险高收益的路线吗？"
+你应该说：
+"很强？代价是什么——掉San还是烧饥饿？暗影剑68伤害但装上去理智就开始溜走……你能接受高风险高收益吗？"
 
-【回复格式规范】
-- 正文紧凑，不要在列表项之间插入空行
-- 【设计进度】与正文之间只留一个空行
-- 格式：【设计进度】✓ 已确认：[...] ？ 待明确：[...]
-
-当类型/功能/外观/数值/代价全部明确后，额外输出：[DESIGN_COMPLETE]"""
+【格式规范】
+- 正文紧凑，禁止在列表项之间插入空行
+- 禁止重复列出"生存代价/阵营关系/风险机制/外观"这四个问题——那是问卷，不是对话
+- 【设计进度】格式：【设计进度】✓ 已确认：[...] ？ 待明确：[...]
+- 当类型/功能/外观/数值/代价全部明确后，输出[DESIGN_COMPLETE]"""
 
 
 RAPID_SYSTEM_PROMPT = f"""你是Klei Entertainment的DST数值设计师，负责把玩家创意转化为官方级MOD规格。
@@ -143,16 +167,25 @@ RAPID_SYSTEM_PROMPT = f"""你是Klei Entertainment的DST数值设计师，负责
 
 【你的核心任务】
 把用户的MOD想法转化为精确、平衡、符合DST世界观的设计规格。
+如果用户的想法不完整，你有权力自主补全——这是你的专业判断，不是在猜测。
+
+【自主补全原则】
+当用户信息不足时：
+- 不要反复追问同样的问题
+- 基于DST世界观和平衡规则，自主做出设计决策
+- 明确标注哪些是你自主补全的，给用户修改空间
+- 最多追问1个最关键的未知点，其他全部自主填充
 
 【强制设计约束（必须检查）】
 □ 强力效果必须有代价：掉San / 降饥饿 / 吸引仇恨 / 限制时间 / 高材料
 □ 食物必须明确：能否食用 + HP/Hunger/San变化
 □ 生物必须定义：阵营 + 仇恨规则 + 是否群体攻击
-□ 数值必须在合理区间内
+□ 数值必须在合理区间内（参考知识库数值）
 □ 装备必须有耐久（或说明为何永久）
 
 【输出风格】
-- 像官方Wiki + 资深玩家说明的混合体
+- 像老玩家+官方策划的混合体，有个性不死板
+- 自主补全的内容要显得自然，不要写"我假设..."
 - 必须有"风险提示"板块
 - 中文回复，饥荒神秘语气
 - 禁止在列表项之间插入多余空行
@@ -183,7 +216,7 @@ RAPID_SYSTEM_PROMPT = f"""你是Klei Entertainment的DST数值设计师，负责
 ════════════════════
 [DESIGN_COMPLETE]
 
-如信息不足，每次最多追问2个关键问题。"""
+如信息不足，最多追问1个关键问题，其他全部自主补全。"""
 
 
 DESIGN_SUMMARY_PROMPT = f"""你是DST MOD设计总结师，负责从对话中提取结构化设计规格。
@@ -240,7 +273,7 @@ DESIGN_SUMMARY_PROMPT = f"""你是DST MOD设计总结师，负责从对话中提
   "risk_notes": "主要风险与代价说明",
   "image_prompts": [
     {{
-      "label": "对象中文名或描述（如：暗影玫瑰）",
+      "label": "对象中文名（如：暗影玫瑰）",
       "prompt_en": "该对象的英文绘图prompt，30词以内，聚焦外观差异"
     }}
   ],
@@ -252,7 +285,8 @@ DESIGN_SUMMARY_PROMPT = f"""你是DST MOD设计总结师，负责从对话中提
 - sub_objects：如果MOD包含多种花/生物/物品变体，每种都列出来，最多3个
 - image_prompts：每个对象（主+子）各生成一条，label与对象名对应
 - stats中没有涉及的数值填null
-- recipe中材料用饥荒内物品英文名"""
+- recipe中材料用饥荒内物品英文名
+- 如果对话中AI已经自主设计了完整内容，忠实提取那些设计"""
 
 
 MOD_CODE_PROMPT = """你是DST（饥荒联机版）MOD的Lua代码生成专家。
@@ -396,23 +430,76 @@ def _format_conversation(messages: list) -> str:
             lines.append(f"【{role}】{content}")
     return "\n".join(lines)
 
+
+def _detect_user_authorization(messages: list) -> bool:
+    """
+    检测用户是否已授权AI自主创作。
+    扫描最后2条用户消息，判断是否包含授权语义。
+    """
+    # 授权关键词
+    auth_patterns = [
+        r"你(来|帮我|给我)(设计|做|补|填|决定|创作|搞)",
+        r"帮(我|忙)(设计|做|补充|填充|决定|创作)",
+        r"(你|AI)(决定|来|搞定|随便|定)",
+        r"(随便|都行|无所谓|随你|你看着办)",
+        r"(全部|都)帮我(补|填|做|完成|搞)",
+        r"你(自己|自主)(设计|决定|来)",
+        r"(补充|补全|填充)(完整|好|一下)",
+    ]
+
+    # 取最近的用户消息（最多看最后3条）
+    user_msgs = [
+        m.get("content", "")
+        for m in messages
+        if isinstance(m, dict) and m.get("role") == "user"
+    ][-3:]
+
+    for msg in user_msgs:
+        for pattern in auth_patterns:
+            if re.search(pattern, msg):
+                return True
+    return False
+
+
 # ══════════════════════════════════════════════════════════════
 # 🗣️ 对话引导
 # ══════════════════════════════════════════════════════════════
 
 def explore_with_llm(messages: list) -> dict:
     """探索模式多轮对话（DST老玩家风格）"""
-    conversation = _format_conversation(messages)
+    conversation   = _format_conversation(messages)
+    is_authorized  = _detect_user_authorization(messages)
+
+    if is_authorized:
+        # 用户已授权 → 指示模型直接创作
+        mode_instruction = (
+            "【重要】用户已经授权你自主设计，不要再追问了。"
+            "请立刻切换到【模式B：自主创作】，基于已知信息发挥创意，"
+            "给出完整、有灵魂的设计方案。"
+            "设计要有特色，符合DST平衡规则，包含具体数值、外观描述、代价、阵营关系。"
+            "回复可以长一些（300字以内），展示完整设计。"
+            "末尾附【设计进度】并加[DESIGN_COMPLETE]。"
+        )
+    else:
+        # 正常追问模式
+        mode_instruction = (
+            "请以DST资深老玩家的语气继续引导设计。"
+            "每次只追问1个最关键的点，不要列出所有待明确的维度当问卷。"
+            "回复控制在100字以内。"
+            "末尾附【设计进度】，格式：【设计进度】✓ 已确认：[...] ？ 待明确：[...]"
+            "当类型/功能/外观/数值/代价全部明确后加[DESIGN_COMPLETE]。"
+        )
+
     user_content = (
         f"当前对话记录：\n{conversation}\n\n"
-        f"请以DST资深老玩家的语气继续引导设计。"
-        f"必须追问生存代价/阵营关系/风险机制中至少1个维度。"
-        f"回复末尾附上【设计进度】，格式：【设计进度】✓ 已确认：[...] ？ 待明确：[...]"
-        f"类型/功能/外观/数值/代价全部明确后加 [DESIGN_COMPLETE]"
+        f"{mode_instruction}"
     )
+
     try:
+        # 授权模式用更高temperature，让创意更丰富
+        temp        = 0.85 if is_authorized else 0.75
         raw         = _call_llm(EXPLORE_SYSTEM_PROMPT, user_content,
-                                temperature=0.75)
+                                temperature=temp)
         is_complete = "[DESIGN_COMPLETE]" in raw
         clean       = raw.replace("[DESIGN_COMPLETE]", "").strip()
         clean       = re.sub(r'\n{3,}', '\n\n', clean)
@@ -424,16 +511,32 @@ def explore_with_llm(messages: list) -> dict:
 
 def rapid_with_llm(messages: list) -> dict:
     """快速模式设计细化（官方数值策划风格）"""
-    conversation = _format_conversation(messages)
+    conversation  = _format_conversation(messages)
+    is_authorized = _detect_user_authorization(messages)
+
+    if is_authorized:
+        mode_instruction = (
+            "【重要】用户已授权你自主补全设计。"
+            "不要追问，直接基于已知信息自主填充所有细节，"
+            "输出完整规格卡，末尾加[DESIGN_COMPLETE]。"
+        )
+    else:
+        mode_instruction = (
+            "按照强制设计约束检查并补全规格。"
+            "信息不足时最多追问1个关键问题，其他自主补全。"
+            "信息足够时输出完整规格卡并加[DESIGN_COMPLETE]。"
+        )
+
     user_content = (
         f"用户MOD构想：\n{conversation}\n\n"
-        f"按照强制设计约束检查并补全规格。"
+        f"{mode_instruction}"
         f"必须包含生存影响、生态关系、风险提示三个板块。"
-        f"信息足够时输出完整规格卡并加 [DESIGN_COMPLETE]"
     )
+
     try:
+        temp        = 0.75 if is_authorized else 0.6
         raw         = _call_llm(RAPID_SYSTEM_PROMPT, user_content,
-                                temperature=0.6)
+                                temperature=temp)
         is_complete = "[DESIGN_COMPLETE]" in raw
         clean       = raw.replace("[DESIGN_COMPLETE]", "").strip()
         clean       = re.sub(r'\n{3,}', '\n\n', clean)
@@ -450,7 +553,9 @@ def summarize_design(messages: list) -> dict:
     """从对话提取结构化设计规格（含多对象支持）"""
     conversation = _format_conversation(messages)
     user_content = (
-        f"请从以下对话中提取完整MOD设计规格（含多对象/多变体信息）：\n\n"
+        f"请从以下对话中提取完整MOD设计规格（含多对象/多变体信息）。\n"
+        f"注意：如果对话中AI已经给出了完整的自主设计（如三种花的详细设计），"
+        f"请忠实提取那些具体设计，不要用默认值替代：\n\n"
         f"{conversation}"
     )
     try:
@@ -458,10 +563,8 @@ def summarize_design(messages: list) -> dict:
                            temperature=0.2)
         result = _safe_parse_json(raw)
         if result:
-            # 兼容旧格式：若没有 image_prompts，从 main_object 构建
             if "image_prompts" not in result:
                 result["image_prompts"] = _build_image_prompts_from_spec(result)
-            # 兼容旧格式：若没有 sub_objects，初始化为空列表
             if "sub_objects" not in result:
                 result["sub_objects"] = []
             return result
@@ -509,8 +612,7 @@ DST_NEGATIVE = (
 def optimize_visual_prompt(design_spec: dict) -> dict:
     """
     生成饥荒风格 AI 绘图 prompt。
-    返回值新增 `all_prompts` 列表，对应每个对象的独立 prompt。
-    格式：[{"label": "暗影玫瑰", "prompt": "...", "negative": "..."}, ...]
+    返回值新增 all_prompts 列表，对应每个对象的独立 prompt。
     """
     obj        = design_spec.get("main_object", {})
     appearance = obj.get("appearance", "")
@@ -519,9 +621,6 @@ def optimize_visual_prompt(design_spec: dict) -> dict:
     mod_type   = design_spec.get("mod_type", "item")
     ecology    = design_spec.get("ecology", {})
     faction    = ecology.get("faction_notes", "")
-
-    # 从 design_spec 提取预设 image_prompts（summarize_design 填充的）
-    preset_prompts = design_spec.get("image_prompts", [])
 
     user_content = (
         f"对象名称：{name_cn}（{name_en}）\n"
@@ -540,16 +639,14 @@ def optimize_visual_prompt(design_spec: dict) -> dict:
                 result["optimized_prompt"] = DST_STYLE_ANCHOR + opt
             if "negative_prompt" not in result:
                 result["negative_prompt"] = DST_NEGATIVE
-
-            # 构建 all_prompts：优先用 preset_prompts，否则从 sub_objects 补充
             all_prompts = _build_all_prompts(
-                design_spec, result["optimized_prompt"], result["negative_prompt"]
+                design_spec,
+                result["optimized_prompt"],
+                result["negative_prompt"]
             )
             result["all_prompts"] = all_prompts
             return result
-
         return _fallback_visual_prompt(design_spec)
-
     except Exception:
         return _fallback_visual_prompt(design_spec)
 
@@ -557,20 +654,16 @@ def optimize_visual_prompt(design_spec: dict) -> dict:
 def _build_all_prompts(design_spec: dict,
                        base_prompt: str,
                        negative: str) -> list:
-    """
-    根据 image_prompts / sub_objects 构建每个对象的独立绘图 prompt 列表。
-    每条：{"label": str, "prompt": str, "negative": str}
-    """
+    """根据 image_prompts / sub_objects 构建每个对象的独立绘图 prompt 列表"""
     preset = design_spec.get("image_prompts", [])
     obj    = design_spec.get("main_object", {})
     subs   = design_spec.get("sub_objects", [])
     result = []
 
     if preset:
-        # 有预设 prompt：为每个预设条目生成带风格锚定词的完整 prompt
         for item in preset:
-            raw_prompt = item.get("prompt_en", "")
-            label      = item.get("label", "")
+            raw_prompt  = item.get("prompt_en", "")
+            label       = item.get("label", "")
             full_prompt = (
                 DST_STYLE_ANCHOR + raw_prompt
                 if "Don't Starve" not in raw_prompt
@@ -582,7 +675,6 @@ def _build_all_prompts(design_spec: dict,
                 "negative": negative,
             })
     else:
-        # 无预设：主对象用 base_prompt，子对象加差异词
         main_label = obj.get("name_cn", "主对象")
         result.append({
             "label":    main_label,
