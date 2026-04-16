@@ -40,7 +40,6 @@ for key, val in {
     "stage":              "chat",
     "generating":         False,
     "sound_audio_cache":  {},
-    "show_producer_msg":  False,
     "show_install_guide": False,
 }.items():
     if key not in st.session_state:
@@ -53,7 +52,7 @@ BASE_URL = (
     "https://raw.githubusercontent.com/LETITIA-TAOBAO/"
     "DON-T-STARVE-TOGETHER-MOD-generator/main/demo/assets/"
 )
-BG_URL = BASE_URL + "background.jpg.jpg"
+BG_URL = BASE_URL + "background.jpg.png"
 
 # ========================
 # 🎨 CSS
@@ -319,8 +318,8 @@ hr {{
 ::-webkit-scrollbar-track {{ background:rgba(10,5,0,0.3); }}
 ::-webkit-scrollbar-thumb {{ background:#5a3810; border-radius:3px; }}
 
-/* ── 创作者信息水印（更明显） ── */
-.creator-tag {{
+/* ── 创作者信息水印（主页框） ── */
+.creator-box {{
     position: fixed;
     bottom: 20px;
     right: 24px;
@@ -334,13 +333,14 @@ hr {{
     box-shadow: 0 4px 16px rgba(0,0,0,0.7);
     opacity: 0.85;
     transition: all 0.3s ease;
+    max-width: 280px;
 }}
-.creator-tag:hover {{
+.creator-box:hover {{
     opacity: 1.0;
     border-color: rgba(200,168,75,0.75);
     box-shadow: 0 6px 24px rgba(0,0,0,0.8), 0 0 20px rgba(200,168,75,0.2);
 }}
-.creator-tag p {{
+.creator-box p {{
     font-family: 'Cinzel', serif !important;
     font-size: 0.75rem !important;
     color: #C8A868 !important;
@@ -349,32 +349,65 @@ hr {{
     line-height: 1.7 !important;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.9) !important;
 }}
-.creator-tag .creator-name {{
+.creator-box .creator-name {{
     font-weight: 600 !important;
     color: #D4A843 !important;
     font-size: 0.82rem !important;
 }}
-.creator-tag .creator-divider {{
+.creator-box .creator-divider {{
     border: none;
     border-top: 1px solid rgba(139,100,32,0.4);
     margin: 8px 0;
     width: 100%;
 }}
+.creator-box .producer-msg-btn {{
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 12px;
+    background: rgba(100,60,10,0.2);
+    border: 1px solid rgba(139,100,32,0.4);
+    border-radius: 4px;
+    color: #D4A843 !important;
+    font-size: 0.7rem !important;
+    cursor: pointer;
+    transition: all 0.2s;
+}}
+.creator-box .producer-msg-btn:hover {{
+    background: rgba(100,60,10,0.3);
+    border-color: rgba(200,168,75,0.5);
+    color: #FFD700 !important;
+}}
+
+/* ── 创作者信息（对话页文字） ── */
+.creator-text {{
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    z-index: 9999;
+    pointer-events: none;
+    font-family: 'Cinzel', serif !important;
+    font-size: 0.65rem !important;
+    color: rgba(200,168,75,0.6) !important;
+    letter-spacing: 1px !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8) !important;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}}
+.creator-text:hover {{
+    opacity: 0.9;
+}}
 </style>
 """, unsafe_allow_html=True)
 
-
-# ══════════════════════════════════════════════════════════════
+# ========================
 # 🔧 工具函数
-# ══════════════════════════════════════════════════════════════
-
+# ========================
 def generate_atlas_xml() -> str:
     return '''<?xml version="1.0" encoding="utf-8"?>
 <TextureAtlas imagePath="modicon.tex">
   <SubTexture name="default" x="0" y="0" width="512" height="512"/>
 </TextureAtlas>
 '''
-
 
 def fetch_image(prompt: str, negative: str = "") -> dict:
     try:
@@ -400,7 +433,6 @@ def fetch_image(prompt: str, negative: str = "") -> dict:
         return {"ok": False, "err": f"HTTP {r.status_code}"}
     except Exception as e:
         return {"ok": False, "err": str(e)}
-
 
 def make_zip(mod: dict) -> bytes:
     install_txt = """══════════════════════════════════════
@@ -445,7 +477,6 @@ def make_zip(mod: dict) -> bytes:
     buf.seek(0)
     return buf.getvalue()
 
-
 def render_chat(messages: list):
     for m in messages:
         if not isinstance(m, dict):
@@ -463,7 +494,6 @@ def render_chat(messages: list):
                 f'<span class="chat-content">{m["content"]}</span>'
                 f'</div>', unsafe_allow_html=True)
 
-
 def reset_to_home():
     st.session_state.update({
         "mode":              "home",
@@ -480,22 +510,20 @@ def reset_to_home():
         "sound_audio_cache": {},
     })
 
-
-# ══════════════════════════════════════════════════════════════
-# 🔊 音效合成 HTML
-# ══════════════════════════════════════════════════════════════
-
+# ========================
+# 🎨 组件函数
+# ========================
 def _synth_audio_html(params: dict, element_id: str) -> str:
-    p           = params
-    safe_id     = element_id.replace("-", "_")
-    stype       = p.get("type", "sound").upper()
-    dur         = p.get("duration", 0.5)
-    osc_type    = p.get("oscillator", "triangle")
-    freq_start  = p.get("frequency_start", 300)
-    freq_end    = max(p.get("frequency_end", 150), 20)
-    gain_start  = p.get("gain_start", 0.5)
-    gain_end    = max(p.get("gain_end", 0.01), 0.001)
-    noise_mix   = p.get("noise_mix", 0.2)
+    p = params
+    safe_id = element_id.replace("-", "_")
+    stype = p.get("type", "sound").upper()
+    dur = p.get("duration", 0.5)
+    osc_type = p.get("oscillator", "triangle")
+    freq_start = p.get("frequency_start", 300)
+    freq_end = max(p.get("frequency_end", 150), 20)
+    gain_start = p.get("gain_start", 0.5)
+    gain_end = max(p.get("gain_end", 0.01), 0.001)
+    noise_mix = p.get("noise_mix", 0.2)
 
     vibrato_js = ""
     if p.get("vibrato"):
@@ -594,36 +622,26 @@ def _synth_audio_html(params: dict, element_id: str) -> str:
     </script>
     """
 
-
-# ══════════════════════════════════════════════════════════════
-# 🔊 音效试听组件
-# ══════════════════════════════════════════════════════════════
-
 def render_sound_preview(sound: dict):
     st.markdown('<div class="preview-box">', unsafe_allow_html=True)
-    st.markdown('<p class="preview-box-title">🔊 音效方案</p>',
-                unsafe_allow_html=True)
+    st.markdown('<p class="preview-box-title">🔊 音效方案</p>', unsafe_allow_html=True)
 
     sfx_list = sound.get("sound_effects", [])
-    ambient  = sound.get("ambient_sound", {})
+    ambient = sound.get("ambient_sound", {})
 
     if not sfx_list and not ambient.get("needed"):
-        st.markdown(
-            '<p style="color:#3a5030;font-style:italic;text-align:center;'
-            'padding:20px 0;">音效方案尚未凝聚……</p>',
-            unsafe_allow_html=True)
+        st.markdown('<p style="color:#3a5030;font-style:italic;text-align:center;padding:20px 0;">音效方案尚未凝聚……</p>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         return
 
     cache = st.session_state.sound_audio_cache
 
-    # ── 各触发音效 ──
     for i, sfx in enumerate(sfx_list):
-        trigger   = sfx.get("trigger", f"音效{i+1}")
-        desc_cn   = sfx.get("description_cn", "")
+        trigger = sfx.get("trigger", f"音效{i+1}")
+        desc_cn = sfx.get("description_cn", "")
         prompt_en = sfx.get("prompt_en", "")
-        keywords  = sfx.get("search_keywords", "")
-        duration  = sfx.get("duration", "short")
+        keywords = sfx.get("search_keywords", "")
+        duration = sfx.get("duration", "short")
         cache_key = f"sfx_{i}"
 
         st.markdown(f"""
@@ -639,7 +657,7 @@ def render_sound_preview(sound: dict):
             if entry.get("ok"):
                 if entry.get("source") == "synth":
                     params = entry.get("synth_params", {})
-                    html   = _synth_audio_html(params, f"sfx{i}")
+                    html = _synth_audio_html(params, f"sfx{i}")
                     st.components.v1.html(html, height=55)
                 else:
                     fmt = entry.get("format", "wav")
@@ -652,33 +670,26 @@ def render_sound_preview(sound: dict):
                         key=f"dl_sfx_{i}",
                         use_container_width=True,
                     )
-                if st.button("🔄 重新生成",
-                             key=f"regen_sfx_{i}", use_container_width=True):
+                if st.button("🔄 重新生成", key=f"regen_sfx_{i}", use_container_width=True):
                     del st.session_state.sound_audio_cache[cache_key]
                     st.rerun()
             else:
-                st.markdown(
-                    f'<span style="color:#9a5a4a;font-size:0.78rem;">'
-                    f'✕ {entry.get("err","未知错误")}</span>',
-                    unsafe_allow_html=True)
-                if st.button("↺ 重试",
-                             key=f"retry_sfx_{i}", use_container_width=True):
+                st.markdown(f'<span style="color:#9a5a4a;font-size:0.78rem;">✕ {entry.get("err","未知错误")}</span>', unsafe_allow_html=True)
+                if st.button("↺ 重试", key=f"retry_sfx_{i}", use_container_width=True):
                     del st.session_state.sound_audio_cache[cache_key]
                     st.rerun()
         else:
-            if st.button("🎵 生成试听",
-                         key=f"gen_sfx_{i}", use_container_width=True):
+            if st.button("🎵 生成试听", key=f"gen_sfx_{i}", use_container_width=True):
                 with st.spinner(f"✦ 召唤「{trigger}」音效……"):
                     result = generate_sound_effect(keywords, prompt_en, duration)
                     st.session_state.sound_audio_cache[cache_key] = result
                 st.rerun()
 
-    # ── 环境音 ──
     if ambient.get("needed"):
-        amb_desc   = ambient.get("description_cn", "")
+        amb_desc = ambient.get("description_cn", "")
         amb_prompt = ambient.get("prompt_en", "")
-        amb_kw     = ambient.get("search_keywords", "")
-        amb_key    = "sfx_ambient"
+        amb_kw = ambient.get("search_keywords", "")
+        amb_key = "sfx_ambient"
 
         st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown(f"""
@@ -694,33 +705,26 @@ def render_sound_preview(sound: dict):
             if entry.get("ok"):
                 if entry.get("source") == "synth":
                     params = entry.get("synth_params", {})
-                    html   = _synth_audio_html(params, "ambient")
+                    html = _synth_audio_html(params, "ambient")
                     st.components.v1.html(html, height=55)
                 else:
                     fmt = entry.get("format", "wav")
                     st.audio(entry["audio_bytes"], format=f"audio/{fmt}")
-                if st.button("🔄 重新生成环境音",
-                             key="regen_ambient", use_container_width=True):
+                if st.button("🔄 重新生成环境音", key="regen_ambient", use_container_width=True):
                     del st.session_state.sound_audio_cache[amb_key]
                     st.rerun()
             else:
-                st.markdown(
-                    f'<span style="color:#9a5a4a;font-size:0.78rem;">'
-                    f'✕ {entry.get("err","")}</span>',
-                    unsafe_allow_html=True)
-                if st.button("↺ 重试环境音",
-                             key="retry_ambient", use_container_width=True):
+                st.markdown(f'<span style="color:#9a5a4a;font-size:0.78rem;">✕ {entry.get("err","")}</span>', unsafe_allow_html=True)
+                if st.button("↺ 重试环境音", key="retry_ambient", use_container_width=True):
                     del st.session_state.sound_audio_cache[amb_key]
                     st.rerun()
         else:
-            if st.button("🎵 生成环境音试听",
-                         key="gen_ambient", use_container_width=True):
+            if st.button("🎵 生成环境音试听", key="gen_ambient", use_container_width=True):
                 with st.spinner("✦ 编织环境音效……"):
                     result = generate_sound_effect(amb_kw, amb_prompt, "medium")
                     st.session_state.sound_audio_cache[amb_key] = result
                 st.rerun()
 
-    # ── 一键全部生成 ──
     all_keys = [f"sfx_{i}" for i in range(len(sfx_list))]
     if ambient.get("needed"):
         all_keys.append("sfx_ambient")
@@ -728,21 +732,20 @@ def render_sound_preview(sound: dict):
 
     if uncached:
         st.markdown("<hr>", unsafe_allow_html=True)
-        if st.button(f"⚡ 一键生成全部音效（{len(uncached)} 个）",
-                     key="gen_all_sfx", use_container_width=True):
+        if st.button(f"⚡ 一键生成全部音效（{len(uncached)} 个）", key="gen_all_sfx", use_container_width=True):
             prog = st.progress(0)
             for idx, key in enumerate(uncached):
                 if key == "sfx_ambient":
-                    kw   = ambient.get("search_keywords", "")
+                    kw = ambient.get("search_keywords", "")
                     prmt = ambient.get("prompt_en", "")
-                    dur  = "medium"
+                    dur = "medium"
                     name = "环境音"
                 else:
-                    n    = int(key.split("_")[1])
-                    s    = sfx_list[n]
-                    kw   = s.get("search_keywords", "")
+                    n = int(key.split("_")[1])
+                    s = sfx_list[n]
+                    kw = s.get("search_keywords", "")
                     prmt = s.get("prompt_en", "")
-                    dur  = s.get("duration", "short")
+                    dur = s.get("duration", "short")
                     name = s.get("trigger", "")
                 with st.spinner(f"✦ 生成「{name}」({idx+1}/{len(uncached)})…"):
                     r = generate_sound_effect(kw, prmt, dur)
@@ -752,16 +755,11 @@ def render_sound_preview(sound: dict):
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-
-# ══════════════════════════════════════════════════════════════
-# 🎨 预览页
-# ══════════════════════════════════════════════════════════════
-
 def render_preview_stage():
-    spec   = st.session_state.design_spec   or {}
-    visual = st.session_state.visual_result  or {}
-    sound  = st.session_state.sound_result   or {}
-    obj    = spec.get("main_object", {})
+    spec = st.session_state.design_spec or {}
+    visual = st.session_state.visual_result or {}
+    sound = st.session_state.sound_result or {}
+    obj = spec.get("main_object", {})
 
     st.markdown("""
     <div class="mode-header">
@@ -770,10 +768,8 @@ def render_preview_stage():
     </div>
     """, unsafe_allow_html=True)
 
-    # ── 规格卡 ──
     st.markdown('<div class="preview-box">', unsafe_allow_html=True)
-    st.markdown('<p class="preview-box-title">📋 MOD 设计规格</p>',
-                unsafe_allow_html=True)
+    st.markdown('<p class="preview-box-title">📋 MOD 设计规格</p>', unsafe_allow_html=True)
     st.markdown(f"""
     <div class="spec-grid">
       <div class="spec-item">
@@ -795,53 +791,39 @@ def render_preview_stage():
     </div>
     """, unsafe_allow_html=True)
 
-    stats      = spec.get("stats", {})
+    stats = spec.get("stats", {})
     stat_items = [(k.upper(), v) for k, v in stats.items() if v is not None]
     if stat_items:
-        st.markdown(
-            '<div class="spec-grid">'
-            + "".join(
-                f'<div class="spec-item"><span class="spec-label">{k}</span>'
-                f'<span class="spec-value">{v}</span></div>'
-                for k, v in stat_items)
-            + '</div>', unsafe_allow_html=True)
+        st.markdown('<div class="spec-grid">' + "".join(
+            f'<div class="spec-item"><span class="spec-label">{k}</span>'
+            f'<span class="spec-value">{v}</span></div>'
+            for k, v in stat_items) + '</div>', unsafe_allow_html=True)
 
     recipe = spec.get("recipe", [])
     if recipe:
-        st.markdown(
-            f'<div class="spec-item" style="margin-top:7px;">'
-            f'<span class="spec-label">RECIPE</span>'
-            f'<span class="spec-value">{" ＋ ".join(recipe)}</span></div>',
-            unsafe_allow_html=True)
+        st.markdown(f'<div class="spec-item" style="margin-top:7px;">'
+                    f'<span class="spec-label">RECIPE</span>'
+                    f'<span class="spec-value">{" ＋ ".join(recipe)}</span></div>',
+                    unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ── 图片 + 音效 ──
     col_img, col_snd = st.columns([1, 1])
-
     with col_img:
         st.markdown('<div class="preview-box">', unsafe_allow_html=True)
-        st.markdown('<p class="preview-box-title">🎨 外观预览</p>',
-                    unsafe_allow_html=True)
+        st.markdown('<p class="preview-box-title">🎨 外观预览</p>', unsafe_allow_html=True)
         img_url = st.session_state.preview_image_url
         if img_url:
-            st.image(img_url, caption=obj.get("name_cn", "MOD 图标"),
-                     use_container_width=True)
+            st.image(img_url, caption=obj.get("name_cn", "MOD 图标"), use_container_width=True)
             used = visual.get("optimized_prompt", "")
             if used:
-                st.markdown(
-                    f'<p style="font-size:0.68rem;color:#4a3820;'
-                    f'font-style:italic;text-align:center;margin-top:4px;">'
-                    f'{used[:90]}…</p>', unsafe_allow_html=True)
-            if st.button("🔄 重新生成图片",
-                         key="regen_img", use_container_width=True):
+                st.markdown(f'<p style="font-size:0.68rem;color:#4a3820;font-style:italic;text-align:center;margin-top:4px;">{used[:90]}…</p>', unsafe_allow_html=True)
+            if st.button("🔄 重新生成图片", key="regen_img", use_container_width=True):
                 with st.spinner("✦ 召唤新的图腾形象……"):
-                    prompt   = visual.get("optimized_prompt",
-                               visual.get("fallback_prompt",
-                               "Don't Starve Together style dark fantasy item"))
+                    prompt = visual.get("optimized_prompt", visual.get("fallback_prompt", "Don't Starve Together style dark fantasy item"))
                     negative = visual.get("negative_prompt", "")
-                    new_img  = fetch_image(prompt, negative)
+                    new_img = fetch_image(prompt, negative)
                     if new_img["ok"]:
                         st.session_state.preview_image_url = new_img["url"]
                         st.session_state.preview_image_b64 = new_img["b64"]
@@ -849,18 +831,13 @@ def render_preview_stage():
                         st.warning(f"生成失败：{new_img['err']}")
                 st.rerun()
         else:
-            st.markdown(
-                '<p style="color:#4a3820;text-align:center;'
-                'font-style:italic;padding:40px 0;">图腾尚未显现……</p>',
-                unsafe_allow_html=True)
+            st.markdown('<p style="color:#4a3820;text-align:center;font-style:italic;padding:40px 0;">图腾尚未显现……</p>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col_snd:
         render_sound_preview(sound)
 
     st.markdown("<hr>", unsafe_allow_html=True)
-
-    # ── 确认按钮 ──
     st.markdown("""
     <p style="text-align:center;font-size:0.82rem;color:#4a3820;
               font-style:italic;margin-bottom:10px;letter-spacing:1px;">
@@ -871,8 +848,7 @@ def render_preview_stage():
     ca, cb, cc = st.columns([2, 3, 2])
     with cb:
         st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
-        if st.button("⚙ 确认并铸造 MOD · Forge",
-                     key="confirm_forge", use_container_width=True):
+        if st.button("⚙ 确认并铸造 MOD · Forge", key="confirm_forge", use_container_width=True):
             st.session_state.preview_approved = True
             st.session_state.stage = "generating"
             st.rerun()
@@ -880,22 +856,15 @@ def render_preview_stage():
 
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("✏ 继续调整设计",
-                     key="back_to_chat", use_container_width=True):
+        if st.button("✏ 继续调整设计", key="back_to_chat", use_container_width=True):
             st.session_state.stage = "chat"
             st.rerun()
     with c2:
         st.markdown('<div class="danger-btn">', unsafe_allow_html=True)
-        if st.button("✕ 放弃，返回主页",
-                     key="abort_preview", use_container_width=True):
+        if st.button("✕ 放弃，返回主页", key="abort_preview", use_container_width=True):
             reset_to_home()
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
-
-
-# ══════════════════════════════════════════════════════════════
-# ⚙️ 生成阶段
-# ══════════════════════════════════════════════════════════════
 
 def render_generating_stage():
     spec = st.session_state.design_spec or {}
@@ -913,10 +882,7 @@ def render_generating_stage():
 
     with st.spinner("✦ 暗影法典正在书写 Lua 代码……"):
         bar.progress(20)
-        result = design_with_llm(
-            st.session_state.final_design,
-            st.session_state.messages
-        )
+        result = design_with_llm(st.session_state.final_design, st.session_state.messages)
     bar.progress(45)
 
     with st.spinner("✦ 封印永恒形象……"):
@@ -931,10 +897,10 @@ def render_generating_stage():
     bar.progress(65)
 
     with st.spinner("✦ 封印音效……"):
-        cache    = st.session_state.get("sound_audio_cache", {})
-        sound    = st.session_state.get("sound_result", {}) or {}
+        cache = st.session_state.get("sound_audio_cache", {})
+        sound = st.session_state.get("sound_result", {}) or {}
         sfx_list = sound.get("sound_effects", [])
-        files    = result.setdefault("data", {}).setdefault("files", {})
+        files = result.setdefault("data", {}).setdefault("files", {})
 
         packed = 0
         for i, sfx in enumerate(sfx_list):
@@ -944,7 +910,7 @@ def render_generating_stage():
                 if entry.get("source") == "synth":
                     continue
                 trig = sfx.get("trigger", "sfx").replace(" ", "_")
-                fmt  = entry.get("format", "wav")
+                fmt = entry.get("format", "wav")
                 files[f"sounds/{trig}_{i}.{fmt}"] = entry["audio_bytes"]
                 packed += 1
 
@@ -963,49 +929,40 @@ def render_generating_stage():
 
     with st.spinner("✦ 归入典藏……"):
         st.session_state.messages.append({
-            "role":    "assistant",
+            "role": "assistant",
             "content": result.get("text", "✦ Mod 铸造完毕。")
         })
         d = result.get("data", {})
         if d:
             st.session_state.generated_mods.append({
-                "id":        len(st.session_state.generated_mods) + 1,
-                "name":      d.get("name", spec.get("mod_name_en",
-                             f"Mod_{datetime.now().strftime('%H%M')}")),
-                "name_cn":   spec.get("mod_name_cn", ""),
-                "desc":      d.get("desc", spec.get("description", "")),
-                "date":      datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "design":    st.session_state.final_design,
-                "spec":      spec,
+                "id": len(st.session_state.generated_mods) + 1,
+                "name": d.get("name", spec.get("mod_name_en", f"Mod_{datetime.now().strftime('%H%M')}")),
+                "name_cn": spec.get("mod_name_cn", ""),
+                "desc": d.get("desc", spec.get("description", "")),
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "design": st.session_state.final_design,
+                "spec": spec,
                 "all_files": d.get("files", {}),
                 "image_url": st.session_state.preview_image_url,
             })
     bar.progress(100)
 
-    st.session_state.stage      = "done"
+    st.session_state.stage = "done"
     st.session_state.generating = False
     st.rerun()
-
-
-# ══════════════════════════════════════════════════════════════
-# 💬 对话阶段
-# ══════════════════════════════════════════════════════════════
 
 def _enter_preview():
     with st.spinner("✦ 永恒大陆的使者正在整理设计蓝图……"):
         spec = summarize_design(st.session_state.messages)
-        st.session_state.design_spec  = spec
-        st.session_state.final_design = json.dumps(
-            spec, ensure_ascii=False, indent=2)
+        st.session_state.design_spec = spec
+        st.session_state.final_design = json.dumps(spec, ensure_ascii=False, indent=2)
 
     with st.spinner("✦ 召唤永恒形象……"):
-        visual   = optimize_visual_prompt(spec)
+        visual = optimize_visual_prompt(spec)
         st.session_state.visual_result = visual
-        prompt   = visual.get("optimized_prompt",
-                   visual.get("fallback_prompt",
-                   "Don't Starve Together official art style, dark fantasy item"))
+        prompt = visual.get("optimized_prompt", visual.get("fallback_prompt", "Don't Starve Together official art style, dark fantasy item"))
         negative = visual.get("negative_prompt", "")
-        img      = fetch_image(prompt, negative)
+        img = fetch_image(prompt, negative)
         st.session_state.preview_image_url = img["url"] if img["ok"] else None
         st.session_state.preview_image_b64 = img["b64"] if img["ok"] else None
 
@@ -1016,7 +973,6 @@ def _enter_preview():
     st.session_state.sound_audio_cache = {}
     st.session_state.stage = "preview"
     st.rerun()
-
 
 def render_chat_stage(mode: str):
     is_explore = (mode == "explore")
@@ -1038,8 +994,7 @@ def render_chat_stage(mode: str):
 
     render_chat(st.session_state.messages)
 
-    placeholder = ("低语你的构想，永恒大陆的使者将倾听……"
-                   if is_explore else "将你的意志化为文字……")
+    placeholder = ("低语你的构想，永恒大陆的使者将倾听……" if is_explore else "将你的意志化为文字……")
     user_inp = st.chat_input(placeholder)
 
     if user_inp:
@@ -1067,8 +1022,7 @@ def render_chat_stage(mode: str):
         c1, c2, c3 = st.columns([1, 3, 1])
         with c2:
             st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
-            if st.button("✦ 预览并确认设计 · Preview & Confirm",
-                         key=f"{mode}_preview_btn", use_container_width=True):
+            if st.button("✦ 预览并确认设计 · Preview & Confirm", key=f"{mode}_preview_btn", use_container_width=True):
                 _enter_preview()
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1076,11 +1030,6 @@ def render_chat_stage(mode: str):
     if st.button("← 归返主页 · Return", key=f"back_{mode}"):
         reset_to_home()
         st.rerun()
-
-
-# ══════════════════════════════════════════════════════════════
-# ✅ 完成页
-# ══════════════════════════════════════════════════════════════
 
 def render_done_stage():
     spec = st.session_state.design_spec or {}
@@ -1101,21 +1050,14 @@ def render_done_stage():
     st.markdown("<br>", unsafe_allow_html=True)
     ca, cb = st.columns(2)
     with ca:
-        if st.button("✦ 继续雕琢 · Refine",
-                     use_container_width=True, key="done_refine"):
+        if st.button("✦ 继续雕琢 · Refine", use_container_width=True, key="done_refine"):
             st.session_state.stage = "chat"
-            st.session_state.mode  = "explore"
+            st.session_state.mode = "explore"
             st.rerun()
     with cb:
-        if st.button("← 归返主页 · Return",
-                     use_container_width=True, key="done_home"):
+        if st.button("← 归返主页 · Return", use_container_width=True, key="done_home"):
             reset_to_home()
             st.rerun()
-
-
-# ══════════════════════════════════════════════════════════════
-# 🏠 主页
-# ══════════════════════════════════════════════════════════════
 
 def render_home():
     st.markdown("""
@@ -1164,8 +1106,7 @@ def render_home():
     col1, col2 = st.columns(2)
     with col1:
         st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
-        if st.button("⚡ 快速生成 · Rapid Forge",
-                     key="k_rapid", use_container_width=True):
+        if st.button("⚡ 快速生成 · Rapid Forge", key="k_rapid", use_container_width=True):
             st.session_state.update({
                 "mode": "rapid", "stage": "chat",
                 "messages": [], "final_design": "",
@@ -1175,8 +1116,7 @@ def render_home():
         st.markdown('</div>', unsafe_allow_html=True)
     with col2:
         st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
-        if st.button("👁 探索设计 · Shadow Explore",
-                     key="k_explore", use_container_width=True):
+        if st.button("👁 探索设计 · Shadow Explore", key="k_explore", use_container_width=True):
             st.session_state.update({
                 "mode": "explore", "stage": "chat",
                 "messages": [], "final_design": "",
@@ -1185,27 +1125,27 @@ def render_home():
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-
-# ══════════════════════════════════════════════════════════════
+# ========================
 # 🚦 路由
-# ══════════════════════════════════════════════════════════════
-
-mode  = st.session_state.mode
+# ========================
+mode = st.session_state.mode
 stage = st.session_state.stage
 
 if mode == "home":
     render_home()
 elif mode in ("explore", "rapid"):
-    if   stage == "chat":       render_chat_stage(mode)
-    elif stage == "preview":    render_preview_stage()
-    elif stage == "generating": render_generating_stage()
-    elif stage == "done":       render_done_stage()
+    if stage == "chat":
+        render_chat_stage(mode)
+    elif stage == "preview":
+        render_preview_stage()
+    elif stage == "generating":
+        render_generating_stage()
+    elif stage == "done":
+        render_done_stage()
 
-
-# ══════════════════════════════════════════════════════════════
+# ========================
 # 📦 侧边栏
-# ══════════════════════════════════════════════════════════════
-
+# ========================
 with st.sidebar:
     st.markdown("### ✦ MOD 典藏库")
     st.caption("— Mod Archive —")
@@ -1239,24 +1179,21 @@ with st.sidebar:
                     use_container_width=True,
                     key=f"dl_{mod['id']}"
                 )
-                if st.button("✦ 重新优化",
-                             key=f"re_{mod['id']}", use_container_width=True):
+                if st.button("✦ 重新优化", key=f"re_{mod['id']}", use_container_width=True):
                     st.session_state.update({
                         "mode": "explore", "stage": "chat",
                         "final_design": mod["design"],
-                        "messages": [{"role": "user",
-                                      "content": mod.get("design", "")}],
+                        "messages": [{"role": "user", "content": mod.get("design", "")}],
                         "sound_audio_cache": {},
                     })
                     st.rerun()
 
     st.divider()
-    
-    # 📖 MOD 安装教程按钮
+
     if st.button("📖 MOD 安装教程", use_container_width=True, key="btn_install_guide"):
         st.session_state.show_install_guide = True
         st.rerun()
-    
+
     st.divider()
     st.caption(f"本次对话：{len(st.session_state.messages)} 条")
     st.caption(f"已生成 Mod：{len(st.session_state.generated_mods)} 个")
@@ -1266,123 +1203,62 @@ with st.sidebar:
             del st.session_state[k]
         st.rerun()
 
-
-# ══════════════════════════════════════════════════════════════
-# 🖋 创作者信息（右下角固定，全页面常驻）
-# ══════════════════════════════════════════════════════════════
-
-st.markdown("""
-<div class="creator-tag">
-    <p class="creator-name">✦ PRODUCER · LETITIA ✦</p>
-    <hr class="creator-divider">
-    <p>1135462669@qq.com</p>
-</div>
-""", unsafe_allow_html=True)
-
-
-# ══════════════════════════════════════════════════════════════
-# 💭 创作者想说按钮（主内容区底部）
-# ══════════════════════════════════════════════════════════════
-
-st.markdown("<br><br>", unsafe_allow_html=True)
-col_left, col_center, col_right = st.columns([1, 2, 1])
-with col_center:
-    if st.button("💭 创作者想说 · FROM PRODUCER", use_container_width=True, key="btn_producer_msg"):
-        st.session_state.show_producer_msg = True
-        st.rerun()
-
-
-# ══════════════════════════════════════════════════════════════
-# 📖 弹窗：创作者想说
-# ══════════════════════════════════════════════════════════════
-
-@st.dialog("✦ 创作者想说 ✦", width="large")
-def show_producer_message():
+# ========================
+# 🖋 创作者信息
+# ========================
+if mode == "home":
+    # 主页显示框
     st.markdown("""
-    <div style="font-family:'IM Fell English SC',serif;font-size:1rem;
-                line-height:2;color:#D4BC88;text-align:justify;">
-        <p style="margin-bottom:18px;">
-            这个 <strong>MOD 生成器</strong>诞生于对《饥荒联机版》的热爱，
-            以及对<strong>创造自由</strong>的向往。
-        </p>
-        <p style="margin-bottom:18px;">
-            它的核心使命是：<strong style="color:#FFD700;">让每一位想在游戏世界中自由创造、
-            但不会编写代码的玩家，都能实现真正的"创造模式"</strong>。
-        </p>
-        <p style="margin-bottom:18px;">
-            通过这个工具，你可以：
-        </p>
-        <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
-            <li>设计全新的 <strong>BOSS</strong> 与挑战机制</li>
-            <li>创造独特的<strong>游戏玩法</strong>与互动系统</li>
-            <li>为建家党打造<strong>自定义元素</strong>与精美贴图</li>
-            <li>实现你脑海中任何疯狂的游戏创意</li>
-        </ul>
-        <p style="margin-bottom:18px;font-style:italic;color:#B89A62;">
-            ⚠️ 当前版本限制：<strong>一轮对话只能创建一个贴图</strong>，
-            但我们正在持续升级中……
-        </p>
-        <p style="margin-bottom:18px;">
-            <strong style="color:#C8A84B;">未来我们将支持：</strong>
-        </p>
-        <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
-            <li>多贴图批量生成</li>
-            <li>动画序列帧自动合成</li>
-            <li>更复杂的游戏逻辑编排</li>
-            <li>可视化 MOD 配置面板</li>
-        </ul>
-        <p style="text-align:center;margin-top:28px;color:#D4A843;
-                  font-style:italic;font-size:1.1rem;letter-spacing:2px;">
-            ✦ 愿你的创造力在永恒大陆中永不熄灭 ✦
-        </p>
+    <div class="creator-box">
+        <p class="creator-name">✦ PRODUCER · LETITIA ✦</p>
+        <hr class="creator-divider">
+        <p>1135462669@qq.com</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    if st.button("关闭", use_container_width=True, key="close_producer"):
-        st.session_state.show_producer_msg = False
-        st.rerun()
+else:
+    # 对话页仅显示文字
+    st.markdown("""
+    <div class="creator-text">
+        ✦ PRODUCER · LETITIA · 1135462669@qq.com
+    </div>
+    """, unsafe_allow_html=True)
 
-if st.session_state.show_producer_msg:
-    show_producer_message()
-
-
-# ══════════════════════════════════════════════════════════════
+# ========================
 # 📖 弹窗：MOD 安装教程
-# ══════════════════════════════════════════════════════════════
-
+# ========================
 @st.dialog("📖 MOD 安装 & 使用教程", width="large")
 def show_install_guide():
     st.markdown("### 一、下载 MOD")
     st.write("在左侧「**MOD 典藏库**」中点击 **「⬇ 下载 MOD 包」**，获得 `.zip` 压缩包。")
-    
+
     st.markdown("### 二、安装步骤")
     st.write("1. **解压**下载的 ZIP 文件")
     st.write("2. 将解压后的**文件夹**（非 ZIP 文件）复制到 MOD 目录：")
-    
+
     st.code("C:/Users/你的用户名/Documents/Klei/DoNotStarveTogether/mods/", language="")
     st.caption("👆 Windows 路径")
-    
+
     st.code("Steam/steamapps/common/Don't Starve Together/mods/", language="")
     st.caption("👆 Steam 安装目录")
-    
+
     st.write("3. 启动游戏 → 主菜单 → **「模组」**")
-    st.write("4. 在列表中找到你的 MOD → 点击**「启用」**")
+    st.write("4. 在列表中找到你的 MOD → 点击「**启用**」")
     st.write("5. 创建或进入存档，MOD 即刻生效 ✨")
-    
+
     st.markdown("### 三、注意事项")
     st.warning("⚠️ MOD 的 `api_version` 必须为 **10**")
     st.warning("⚠️ 多人游戏时，**所有玩家**都需安装相同 MOD")
     st.info("💡 如遇问题，检查游戏日志文件：")
     st.code("Documents/Klei/DoNotStarveTogether/client_log.txt", language="")
-    
+
     st.markdown("### 四、进阶使用")
     st.write("• 音效文件已自动打包到 `sounds/` 目录")
     st.write("• 贴图文件位于 `images/` 目录")
     st.write("• 可手动编辑 `modmain.lua` 自定义功能")
-    
+
     st.markdown("---")
     st.markdown("<p style='text-align:center;color:#D4A843;font-style:italic;'>✦ 祝你在永恒大陆玩得愉快 ✦</p>", unsafe_allow_html=True)
-    
+
     if st.button("关闭", use_container_width=True, key="close_install"):
         st.session_state.show_install_guide = False
         st.rerun()
