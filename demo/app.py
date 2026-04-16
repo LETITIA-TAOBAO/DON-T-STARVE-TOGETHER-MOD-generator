@@ -19,6 +19,7 @@ try:
         optimize_visual_prompt,
         generate_sound_prompts,
         generate_sound_effect,
+        DST_NEGATIVE,          # ← 直接导入常量
     )
 except ImportError as e:
     st.error(f"❌ 永恒大陆加载失败：{e}")
@@ -238,7 +239,8 @@ div[data-testid="stButton"]>button:hover {{
     padding:20px 28px 16px; text-align:center; margin-bottom:18px;
 }}
 .mode-header h3 {{ font-size:1.55rem !important; margin:0 0 5px !important; }}
-.mode-header p  {{ font-size:0.86rem !important; color:#7a6040 !important; margin:0 !important; }}
+.mode-header p  {{ font-size:0.86rem !important; color:#7a6040 !important;
+                   margin:0 !important; }}
 
 .chat-user {{
     background:rgba(25,14,4,0.90); border-left:3px solid #C8820C;
@@ -286,9 +288,18 @@ div[data-testid="stButton"]>button:hover {{
     color: #D4A843 !important;
     font-size: 0.82rem !important;
 }}
-.img-limit-notice .limit-icon {{
-    font-size: 0.90rem;
-    margin-right: 4px;
+
+/* ── 视觉描述调试标签 ── */
+.visual-debug {{
+    background: rgba(10,20,10,0.70);
+    border: 1px solid #2a4a2a;
+    border-radius: 3px;
+    padding: 4px 8px;
+    margin: 4px 0 6px 0;
+    font-size: 0.68rem !important;
+    color: #4a8a4a !important;
+    font-style: italic !important;
+    font-family: monospace !important;
 }}
 
 .spec-grid {{
@@ -381,11 +392,14 @@ hr {{
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════
-# 🔧 工具函数
+# 📌 常量
 # ══════════════════════════════════════════════════════════════
 
-# ── 贴图上限常量（统一管理，方便日后修改）──────────────────
-MAX_IMAGES = 4
+MAX_IMAGES = 4   # 最多生成贴图数量
+
+# ══════════════════════════════════════════════════════════════
+# 🔧 工具函数
+# ══════════════════════════════════════════════════════════════
 
 def generate_atlas_xml() -> str:
     return '''<?xml version="1.0" encoding="utf-8"?>
@@ -395,88 +409,69 @@ def generate_atlas_xml() -> str:
 '''
 
 
-def _clean_for_url(text: str, max_chars: int = 300) -> str:
+def _sanitize_for_url(text: str, max_chars: int = 250) -> str:
     """
     清理文本用于 URL：
-    1. 移除所有中文字符
-    2. 只保留英文字母、数字、空格、逗号、连字符
-    3. 按字符数截断（不按词数，更精确控制长度）
-    4. 清理多余空格
+    · 移除所有非 ASCII 字符（含中文）
+    · 只保留字母、数字、空格、逗号、连字符
+    · 按字符数截断（在词边界）
     """
-    # 移除中文
-    text = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u20000-\u2a6df]+', '', text)
-    # 只保留安全字符
-    text = re.sub(r'[^\w\s,\-\.]', ' ', text)
-    # 合并多余空格
+    text = re.sub(r'[^\x00-\x7F]+', ' ', text)          # 移除非 ASCII
+    text = re.sub(r'[^a-zA-Z0-9\s,\-\.]', ' ', text)    # 只保留安全字符
     text = re.sub(r'\s+', ' ', text).strip()
-    # 按字符数截断（在词边界截断）
     if len(text) > max_chars:
         text = text[:max_chars]
-        # 在最后一个空格处截断，避免截断单词中间
         last_space = text.rfind(' ')
         if last_space > max_chars // 2:
             text = text[:last_space]
     return text.strip()
 
 
-def _build_safe_image_url(prompt: str, seed: int) -> str:
+def _build_image_url(prompt: str, seed: int) -> str:
     """
-    构建安全的图片 URL：
-    - prompt 严格限制在 250 字符以内（编码前）
-    - negative prompt 固定使用极短版本
-    - 使用 requests.Request 来正确编码，避免手动拼接出错
+    构建 Pollinations 图片 URL。
+    prompt 应已是完整的英文 prompt（风格锚定词 + 对象描述）。
     """
-    # 固定短版 negative prompt（约 80 字符）
-    FIXED_NEG = (
-        "realistic photo 3d render anime bright colors "
-        "text watermark blurry modern"
-    )
-
-    # 清理并严格截断 prompt
-    clean = _clean_for_url(prompt, max_chars=250)
-    if len(clean) < 8:
+    # 再次确保无中文、无超长
+    clean = _sanitize_for_url(prompt, max_chars=350)
+    if not clean or len(clean) < 8:
         clean = (
-            "Don't Starve Together dark gothic item "
-            "hand-drawn sketch muted parchment style"
+            "Don't Starve Together game art style Tim Burton gothic cartoon "
+            "thick black ink outlines hand-drawn dark flower 2D game sprite"
         )
 
-    # 手动构建 URL（pollinations 的路径参数需要特殊处理）
-    # 只对空格和逗号编码，保留其他 ASCII 字符
-    enc_prompt = clean.replace(" ", "+").replace(",", "%2C")
-    enc_neg    = FIXED_NEG.replace(" ", "+")
+    # URL 编码（空格→+，逗号→%2C）
+    enc = clean.replace(" ", "+").replace(",", "%2C")
+
+    # 固定短版 negative（约 60 字符，避免 URL 过长）
+    neg = "realistic+photo+3d+render+anime+bright+colors+text+watermark+blurry"
 
     url = (
-        f"https://image.pollinations.ai/prompt/{enc_prompt}"
+        f"https://image.pollinations.ai/prompt/{enc}"
         f"?width=512&height=512"
         f"&nologo=true"
-        f"&negative={enc_neg}"
+        f"&negative={neg}"
         f"&model=flux"
         f"&seed={seed % 99999}"
     )
     return url
 
 
-def fetch_image(prompt: str, negative: str = "") -> dict:
+def fetch_image(full_prompt: str) -> dict:
     """
-    健壮版图片获取：
-    - 严格控制 URL 总长度 ≤ 1500 字符
-    - 最多重试 2 次（换种子）
-    - 详细错误信息
+    获取图片。
+    full_prompt：已包含风格锚定词的完整英文 prompt（来自 qwen_client）。
+    自动重试 2 次（换种子）。
     """
     seed = int(datetime.now().timestamp()) % 99999
 
     for attempt in range(2):
         try:
-            url = _build_safe_image_url(prompt, seed + attempt * 1000)
+            url = _build_image_url(full_prompt, seed + attempt * 3333)
 
-            # 安全检查：URL 总长不超过 1500
-            if len(url) > 1500:
-                # 进一步截短 prompt
-                short_prompt = _clean_for_url(prompt, max_chars=150)
-                url = _build_safe_image_url(short_prompt, seed + attempt * 1000)
-
-            print(f"[DEBUG] 图片请求 URL 长度={len(url)}, attempt={attempt+1}")
-            print(f"[DEBUG] URL: {url[:120]}...")
+            print(f"[DEBUG] fetch_image attempt={attempt+1} "
+                  f"url_len={len(url)}")
+            print(f"[DEBUG] url前120字符: {url[:120]}...")
 
             r = requests.get(url, timeout=90)
 
@@ -486,27 +481,20 @@ def fetch_image(prompt: str, negative: str = "") -> dict:
                     "b64": base64.b64encode(r.content).decode(),
                     "url": url,
                 }
-            elif r.status_code == 200:
-                # 返回了内容但太小（可能是错误图）
-                print(f"[DEBUG] 响应内容太小: {len(r.content)} bytes")
-                continue
-            else:
-                print(f"[DEBUG] HTTP错误: {r.status_code}")
-                if attempt == 0:
-                    continue  # 重试
+            print(f"[DEBUG] 响应异常: status={r.status_code} "
+                  f"size={len(r.content)}")
+            # 继续重试
 
         except requests.Timeout:
-            if attempt == 0:
-                print("[DEBUG] 超时，重试中……")
-                continue
-            return {"ok": False, "err": "图片生成超时（>90s），请点击重生成重试"}
+            print(f"[DEBUG] 超时 attempt={attempt+1}")
+            if attempt == 1:
+                return {"ok": False, "err": "图片生成超时（>90s），请点击重生成重试"}
         except Exception as e:
-            print(f"[DEBUG] 异常: {e}")
-            if attempt == 0:
-                continue
-            return {"ok": False, "err": f"生成错误：{str(e)[:60]}"}
+            print(f"[DEBUG] 异常 attempt={attempt+1}: {e}")
+            if attempt == 1:
+                return {"ok": False, "err": f"生成错误：{str(e)[:60]}"}
 
-    return {"ok": False, "err": "两次尝试均失败，请点击「重生成」重试"}
+    return {"ok": False, "err": "两次尝试均失败，请点击「🔄 重生成」重试"}
 
 
 def make_zip(mod: dict) -> bytes:
@@ -521,10 +509,10 @@ def make_zip(mod: dict) -> bytes:
 ④ api_version 必须为 10，多人游戏所有玩家需安装
 
 【贴图说明】
-• modicon.tex / modicon.xml → MOD 主图标（第1张贴图）
-• images/ 目录 → 其余变体贴图（第2-4张）
-• 本工具最多支持生成 4 张贴图（1张主图标 + 3张变体）
-• 如需更多贴图，可在 images/ 目录手动添加
+· modicon.tex / modicon.xml → MOD 主图标（第1张贴图）
+· images/ 目录 → 其余变体贴图（第2–4张）
+· 本工具最多支持生成 4 张贴图
+· 如需更多贴图，可在 images/ 目录手动添加
 
 ══════════════════════════════════════
 CREATED BY DST MOD GENERATOR · PRODUCER · LETITIA
@@ -557,7 +545,8 @@ def render_chat(messages: list):
         else:
             st.markdown(
                 f'<div class="chat-ai">'
-                f'<span class="chat-name" style="color:#4A9A50;">✦ SHADOW ARCHITECT</span>'
+                f'<span class="chat-name" style="color:#4A9A50;">'
+                f'✦ SHADOW ARCHITECT</span>'
                 f'<span class="chat-content">{m["content"]}</span>'
                 f'</div>', unsafe_allow_html=True)
 
@@ -573,46 +562,52 @@ def reset_to_home():
         "num_images": 1,
     })
 
+# ══════════════════════════════════════════════════════════════
+# 🎨 图片 Prompt 辅助函数
+# （新版：直接读取 qwen_client 生成好的完整 prompt）
+# ══════════════════════════════════════════════════════════════
 
-def _get_image_prompt_for_idx(idx: int) -> str:
+def _get_prompt_entry_for_idx(idx: int) -> dict:
     """
-    获取第 idx 张图对应的 prompt。
-    优先从 all_prompts 读取，并强制截断到安全长度。
+    获取第 idx 张图的完整 prompt 条目。
+    返回：{"label": str, "prompt": str, "visual_en": str}
+    prompt 已是风格锚定词 + 视觉描述的完整字符串。
     """
     visual      = st.session_state.visual_result or {}
     all_prompts = visual.get("all_prompts", [])
-    if idx < len(all_prompts):
-        raw = all_prompts[idx].get("prompt", "")
-    else:
-        # 降级：用基础 prompt 加变体词
-        base = visual.get("optimized_prompt", "")
-        raw  = f"{base} variant {idx + 1}" if base else ""
 
-    # 无论来源，都做清理截断，确保安全
-    cleaned = _clean_for_url(raw, max_chars=220)
-    if not cleaned or len(cleaned) < 8:
-        cleaned = (
-            "Don't Starve Together dark gothic item "
-            "hand-drawn sketch muted parchment style"
+    if idx < len(all_prompts):
+        return all_prompts[idx]
+
+    # 降级兜底
+    base_prompt = visual.get("optimized_prompt", "")
+    if not base_prompt:
+        base_prompt = (
+            "Don't Starve Together game art style, Tim Burton gothic cartoon, "
+            "thick black ink outlines, hand-drawn sketch texture, "
+            "muted earth tones, dark whimsical, 2D game asset sprite, "
+            "dark mysterious flower"
         )
-    return cleaned
+    return {
+        "label":     f"变体 #{idx + 1}",
+        "prompt":    base_prompt,
+        "visual_en": "dark mysterious flower",
+    }
 
 
-def _get_image_label_for_idx(idx: int, default: str) -> str:
-    """获取第 idx 张图的标签"""
-    visual      = st.session_state.visual_result or {}
-    all_prompts = visual.get("all_prompts", [])
-    if idx < len(all_prompts):
-        return all_prompts[idx].get("label", default)
-    return f"{default} #{idx + 1}"
+def _get_full_prompt_for_idx(idx: int) -> str:
+    """获取第 idx 张图的完整绘图 prompt（直接用于 fetch_image）"""
+    return _get_prompt_entry_for_idx(idx).get("prompt", "")
 
 
-def _get_negative_prompt() -> str:
-    """返回极短的固定 negative prompt（不从 visual_result 读取，避免过长）"""
-    return (
-        "realistic photo 3d render anime bright colors "
-        "text watermark blurry modern"
-    )
+def _get_label_for_idx(idx: int, default: str = "贴图") -> str:
+    """获取第 idx 张图的显示标签"""
+    return _get_prompt_entry_for_idx(idx).get("label", f"{default} #{idx+1}")
+
+
+def _get_visual_en_for_idx(idx: int) -> str:
+    """获取第 idx 张图的视觉描述部分（用于调试显示）"""
+    return _get_prompt_entry_for_idx(idx).get("visual_en", "")
 
 # ══════════════════════════════════════════════════════════════
 # 🔊 音效合成 HTML
@@ -727,21 +722,19 @@ def _get_or_generate_sfx(cache_key: str, sfx_data: dict,
     if cache_key in cache:
         return cache[cache_key]
     if sfx_data.get("synth_params"):
-        result = {
+        return {
             "ok":           True,
             "source":       "synth",
             "synth_params": sfx_data["synth_params"],
             "format":       "synth",
         }
-    else:
-        result = generate_sound_effect(
-            search_keywords = sfx_data.get("trigger", ""),
-            prompt_en       = sfx_data.get("description_cn", ""),
-            faction         = sfx_data.get("faction", "neutral"),
-            trigger_type    = trigger_type,
-            duration        = duration,
-        )
-    return result
+    return generate_sound_effect(
+        search_keywords = sfx_data.get("trigger", ""),
+        prompt_en       = sfx_data.get("description_cn", ""),
+        faction         = sfx_data.get("faction", "neutral"),
+        trigger_type    = trigger_type,
+        duration        = duration,
+    )
 
 
 def render_sound_preview(sound: dict):
@@ -810,11 +803,11 @@ def render_sound_preview(sound: dict):
             if st.button("🎵 生成试听", key=f"gen_sfx_{i}",
                          use_container_width=True):
                 with st.spinner(f"✦ 召唤「{trigger}」音效……"):
-                    result = _get_or_generate_sfx(
-                        cache_key, sfx, trigger_type)
+                    result = _get_or_generate_sfx(cache_key, sfx, trigger_type)
                     st.session_state.sound_audio_cache[cache_key] = result
                 st.rerun()
 
+    # Ambient
     if ambient.get("needed"):
         amb_desc = ambient.get("description_cn", "")
         amb_key  = "sfx_ambient"
@@ -830,8 +823,7 @@ def render_sound_preview(sound: dict):
         if amb_key in cache:
             entry = cache[amb_key]
             if entry.get("ok"):
-                html = synth_audio_html(
-                    entry.get("synth_params", {}), "ambient")
+                html = synth_audio_html(entry.get("synth_params", {}), "ambient")
                 if html:
                     st.components.v1.html(html, height=55)
                 if st.button("🔄 重新生成环境音", key="regen_ambient",
@@ -851,11 +843,12 @@ def render_sound_preview(sound: dict):
             if st.button("🎵 生成环境音试听", key="gen_ambient",
                          use_container_width=True):
                 with st.spinner("✦ 编织环境音效……"):
-                    result = _get_or_generate_sfx(
-                        amb_key, ambient, "ambient", "medium")
+                    result = _get_or_generate_sfx(amb_key, ambient,
+                                                  "ambient", "medium")
                     st.session_state.sound_audio_cache[amb_key] = result
                 st.rerun()
 
+    # 一键生成全部
     all_keys = [f"sfx_{i}" for i in range(len(sfx_list))]
     if ambient.get("needed"):
         all_keys.append("sfx_ambient")
@@ -878,8 +871,8 @@ def render_sound_preview(sound: dict):
                     name     = sfx_data.get("trigger", "")
                     t_type   = sfx_data.get("trigger_type", "pickup")
                     dur      = "short"
-
-                with st.spinner(f"✦ 生成「{name}」({idx+1}/{len(uncached)})…"):
+                with st.spinner(
+                        f"✦ 生成「{name}」({idx+1}/{len(uncached)})…"):
                     r = _get_or_generate_sfx(key, sfx_data, t_type, dur)
                     st.session_state.sound_audio_cache[key] = r
                 prog.progress((idx + 1) / len(uncached))
@@ -895,14 +888,15 @@ def _render_image_limit_notice(num_images: int):
     """渲染贴图数量限制说明"""
     st.markdown(f"""
     <div class="img-limit-notice">
-      <span class="limit-icon">📌</span>
-      <strong>贴图生成说明</strong><br>
+      📌 <strong>贴图生成说明</strong><br>
       · 本工具最多支持生成 <strong>{MAX_IMAGES} 张</strong>游戏贴图
       （1 张主图标 + 最多 3 张变体）<br>
       · 当前已选择生成 <strong>{num_images} 张</strong>，
         第 1 张将自动用作 MOD 图标（modicon），
         其余存入 <code>images/</code> 目录<br>
-      · 如需超过 {MAX_IMAGES} 张贴图，请下载 MOD 包后在
+      · 每张图的 Prompt 由 AI 根据该对象的外观描述独立生成，
+        确保内容与设计对应<br>
+      · 如需超过 {MAX_IMAGES} 张贴图，下载 MOD 包后可在
         <code>images/</code> 目录手动添加<br>
       · 图片由 <em>Pollinations AI</em> 生成，网络波动可能导致失败，
         可点击「🔄 重生成」单独重试
@@ -932,7 +926,7 @@ def render_image_gallery(visual: dict, spec: dict):
     # 贴图限制说明
     _render_image_limit_notice(n)
 
-    # 每行最多 2 列（避免过窄）
+    # 每行最多 2 列
     cols_per_row = min(n, 2)
     rows = [images[i:i + cols_per_row]
             for i in range(0, n, cols_per_row)]
@@ -942,6 +936,9 @@ def render_image_gallery(visual: dict, spec: dict):
         for col, img_data in zip(cols, row_imgs):
             global_idx = images.index(img_data)
             is_icon    = (global_idx == 0)
+            label      = img_data.get("label", name_cn)
+            visual_en  = img_data.get("visual_en", "")
+
             with col:
                 st.markdown('<div class="img-card">', unsafe_allow_html=True)
 
@@ -955,39 +952,42 @@ def render_image_gallery(visual: dict, spec: dict):
 
                 if img_data.get("url"):
                     st.image(img_data["url"], use_container_width=True)
-                    label = img_data.get("label", name_cn)
                     st.markdown(
-                        f'<span class="img-card-label">#{global_idx+1} {label}</span>',
+                        f'<span class="img-card-label">'
+                        f'#{global_idx+1} {label}</span>',
                         unsafe_allow_html=True)
-                    if img_data.get("err"):
-                        st.markdown(
-                            f'<span style="color:#9a5a4a;font-size:0.70rem;">'
-                            f'⚠ {img_data["err"]}</span>',
-                            unsafe_allow_html=True)
                 else:
-                    err_msg = img_data.get("err", "生成失败")
+                    err_msg = img_data.get("err", "生成失败，请重试")
                     st.markdown(
                         f'<p style="color:#6a3820;text-align:center;'
                         f'font-style:italic;padding:20px 0;font-size:0.8rem;">'
-                        f'#{global_idx+1} 生成失败<br>'
+                        f'#{global_idx+1} {label}<br>'
                         f'<span style="font-size:0.70rem;color:#4a2818;">'
                         f'{err_msg}</span></p>',
                         unsafe_allow_html=True)
+
+                # 视觉描述标签（调试信息，展示 AI 生成的视觉描述）
+                if visual_en:
+                    st.markdown(
+                        f'<div class="visual-debug">🖌 {visual_en}</div>',
+                        unsafe_allow_html=True)
+
                 st.markdown('</div>', unsafe_allow_html=True)
 
+                # 重生成按钮
                 if st.button(f"🔄 重生成 #{global_idx+1}",
                              key=f"regen_img_{global_idx}",
                              use_container_width=True):
-                    lbl = img_data.get("label", name_cn)
-                    with st.spinner(f"✦ 重新召唤「{lbl}」……"):
-                        prompt  = _get_image_prompt_for_idx(global_idx)
-                        new_img = fetch_image(prompt)
+                    with st.spinner(f"✦ 重新召唤「{label}」……"):
+                        full_prompt = _get_full_prompt_for_idx(global_idx)
+                        new_img     = fetch_image(full_prompt)
                         if new_img["ok"]:
                             st.session_state.preview_images[global_idx] = {
-                                "url":   new_img["url"],
-                                "b64":   new_img["b64"],
-                                "label": lbl,
-                                "err":   "",
+                                "url":       new_img["url"],
+                                "b64":       new_img["b64"],
+                                "label":     label,
+                                "visual_en": _get_visual_en_for_idx(global_idx),
+                                "err":       "",
                             }
                         else:
                             st.session_state.preview_images[global_idx]["err"] = (
@@ -995,18 +995,21 @@ def render_image_gallery(visual: dict, spec: dict):
                             st.warning(f"生成失败：{new_img['err']}")
                     st.rerun()
 
-    # 提示词预览（折叠）
+    # Prompt 详情（折叠）
     all_prompts = visual.get("all_prompts", [])
     if all_prompts:
         with st.expander("🔍 查看绘图 Prompt（调试用）", expanded=False):
             for i, ap in enumerate(all_prompts[:n]):
-                raw_p   = ap.get("prompt", "")
-                clean_p = _clean_for_url(raw_p, max_chars=220)
+                visual_en_part = ap.get("visual_en", "")
+                full_p         = ap.get("prompt", "")
                 st.markdown(
-                    f'<p style="font-size:0.68rem;color:#4a3820;'
-                    f'font-style:italic;margin:2px 0;">'
-                    f'<strong style="color:#7a5a28;">#{i+1} {ap.get("label","")}</strong>'
-                    f'（{len(clean_p)}字符）: {clean_p[:100]}…</p>',
+                    f'<p style="font-size:0.68rem;color:#4a3820;margin:4px 0;">'
+                    f'<strong style="color:#7a5a28;">#{i+1} {ap.get("label","")}</strong><br>'
+                    f'🖌 视觉描述: <span style="color:#4a8a4a;">'
+                    f'{visual_en_part}</span><br>'
+                    f'📝 完整Prompt ({len(full_p)}字符): '
+                    f'<span style="font-style:italic;">{full_p[:120]}…</span>'
+                    f'</p>',
                     unsafe_allow_html=True)
 
     # 一键重生成全部
@@ -1015,15 +1018,17 @@ def render_image_gallery(visual: dict, spec: dict):
         with st.spinner(f"✦ 重新召唤全部 {n} 张图腾……"):
             new_images = []
             for idx in range(n):
-                prompt = _get_image_prompt_for_idx(idx)
-                label  = (images[idx].get("label", name_cn)
-                          if idx < len(images) else name_cn)
-                img = fetch_image(prompt)
+                entry      = _get_prompt_entry_for_idx(idx)
+                full_p     = entry.get("prompt", "")
+                lbl        = entry.get("label", name_cn)
+                visual_en  = entry.get("visual_en", "")
+                img = fetch_image(full_p)
                 new_images.append({
-                    "url":   img["url"] if img["ok"] else None,
-                    "b64":   img["b64"] if img["ok"] else None,
-                    "label": label,
-                    "err":   img.get("err", "") if not img["ok"] else "",
+                    "url":       img["url"] if img["ok"] else None,
+                    "b64":       img["b64"] if img["ok"] else None,
+                    "label":     lbl,
+                    "visual_en": visual_en,
+                    "err":       img.get("err", "") if not img["ok"] else "",
                 })
             st.session_state.preview_images = new_images
 
@@ -1118,11 +1123,12 @@ def render_preview_stage():
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ── 贴图数量选择（图片未生成时显示）──────────────────
+    # ── 贴图数量选择（图片未生成时）──────────────────────
     if not st.session_state.preview_images:
-        all_prompts     = visual.get("all_prompts", [])
-        suggested_count = max(1, min(len(all_prompts), MAX_IMAGES)) if all_prompts else 1
-        sub_count       = len(spec.get("sub_objects", []))
+        all_prompts = visual.get("all_prompts", [])
+        # 推荐数量 = LLM 生成的 prompt 数量（已与对象数对齐）
+        suggested   = max(1, min(len(all_prompts), MAX_IMAGES))
+        sub_count   = len(spec.get("sub_objects", []))
 
         st.markdown("""
         <p style="text-align:center;font-size:0.92rem;color:#C8A84B;
@@ -1131,18 +1137,19 @@ def render_preview_stage():
         </p>
         """, unsafe_allow_html=True)
 
-        # 贴图限制说明（选择前展示）
+        # 限制说明
         st.markdown(f"""
         <div class="img-limit-notice">
-          <span class="limit-icon">📌</span>
-          <strong>贴图生成限制说明</strong><br>
+          📌 <strong>贴图生成限制说明</strong><br>
           · 本工具最多支持生成 <strong>{MAX_IMAGES} 张</strong>游戏贴图<br>
           · <strong>第 1 张</strong>自动作为 MOD 图标（modicon.tex），
             显示在游戏模组列表中<br>
           · <strong>第 2–{MAX_IMAGES} 张</strong>作为变体贴图，
             存入 MOD 包的 <code>images/</code> 目录<br>
-          · 如需超过 {MAX_IMAGES} 张贴图，下载 MOD 包后可手动在
-            <code>images/</code> 目录中添加<br>
+          · 每张图的绘图描述由 AI 根据该对象外观独立生成，
+            内容与设计一一对应<br>
+          · 如需超过 {MAX_IMAGES} 张贴图，下载后可在
+            <code>images/</code> 目录手动添加<br>
           · 图片生成由 <em>Pollinations AI</em> 提供，网络波动可能导致个别张失败，
             可单独点击「🔄 重生成」重试
         </div>
@@ -1150,31 +1157,27 @@ def render_preview_stage():
 
         col_n1, col_n2, col_n3 = st.columns([1, 2, 1])
         with col_n2:
-            # 推荐数量提示
-            if suggested_count > 1 or sub_count > 0:
-                actual_suggest = max(suggested_count,
-                                     min(sub_count + 1, MAX_IMAGES))
+            if suggested > 1 or sub_count > 0:
                 st.markdown(
                     f'<p style="text-align:center;font-size:0.78rem;'
                     f'color:#7a5a28;margin-bottom:4px;">'
-                    f'✦ 检测到 {max(sub_count, suggested_count - 1)} 种变体对象，'
+                    f'✦ AI 已为 <strong style="color:#C8A84B;">'
+                    f'{suggested}</strong> 个对象生成了独立绘图描述，'
                     f'推荐生成 <strong style="color:#C8A84B;">'
-                    f'{actual_suggest}</strong> 张</p>',
+                    f'{suggested}</strong> 张</p>',
                     unsafe_allow_html=True)
-            else:
-                actual_suggest = 1
 
             num = st.select_slider(
                 "贴图数量",
                 options=list(range(1, MAX_IMAGES + 1)),
-                value=min(actual_suggest, MAX_IMAGES),
+                value=min(suggested, MAX_IMAGES),
                 key="num_images_slider",
                 label_visibility="collapsed",
             )
             st.session_state.num_images = num
 
-            # 动态说明
-            slot_desc = "（仅主图标）" if num == 1 else f"（1 张主图标 + {num-1} 张变体）"
+            slot_desc = ("（仅主图标）" if num == 1
+                         else f"（1 张主图标 + {num-1} 张变体）")
             st.markdown(
                 f'<p style="text-align:center;font-size:0.80rem;'
                 f'color:#9a7a48;margin-top:4px;">'
@@ -1182,41 +1185,52 @@ def render_preview_stage():
                 f'{slot_desc}</p>',
                 unsafe_allow_html=True)
 
+            # 预览将要使用的视觉描述
+            if all_prompts:
+                st.markdown(
+                    '<p style="text-align:center;font-size:0.72rem;'
+                    'color:#5a4020;margin-top:6px;margin-bottom:2px;">'
+                    '── 各张图的视觉描述预览 ──</p>',
+                    unsafe_allow_html=True)
+                for i in range(min(num, len(all_prompts))):
+                    ap = all_prompts[i]
+                    st.markdown(
+                        f'<div class="visual-debug">'
+                        f'#{i+1} {ap.get("label","")}: '
+                        f'{ap.get("visual_en","")}</div>',
+                        unsafe_allow_html=True)
+
         col_g1, col_g2, col_g3 = st.columns([1, 2, 1])
         with col_g2:
             st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
             if st.button("✦ 生成贴图预览",
                          key="gen_imgs_btn", use_container_width=True):
-                new_images = []
-                prog = st.progress(0)
+                new_images  = []
                 failed_list = []
+                prog = st.progress(0)
 
                 for idx in range(num):
-                    label  = _get_image_label_for_idx(idx, obj.get("name_cn", "MOD图标"))
-                    prompt = _get_image_prompt_for_idx(idx)
-                    if not prompt:
-                        prompt = (
-                            "Don't Starve Together dark gothic item "
-                            "hand-drawn sketch muted parchment style"
-                        )
+                    entry     = _get_prompt_entry_for_idx(idx)
+                    full_p    = entry.get("prompt", "")
+                    lbl       = entry.get("label", obj.get("name_cn", "贴图"))
+                    visual_en = entry.get("visual_en", "")
 
                     with st.spinner(
-                            f"✦ 生成第 {idx+1}/{num} 张「{label}」……"):
-                        img = fetch_image(prompt)
-                        entry = {
-                            "url":   img["url"] if img["ok"] else None,
-                            "b64":   img["b64"] if img["ok"] else None,
-                            "label": label,
-                            "err":   img.get("err", "") if not img["ok"] else "",
-                        }
-                        new_images.append(entry)
+                            f"✦ 生成第 {idx+1}/{num} 张「{lbl}」……"):
+                        img = fetch_image(full_p)
+                        new_images.append({
+                            "url":       img["url"] if img["ok"] else None,
+                            "b64":       img["b64"] if img["ok"] else None,
+                            "label":     lbl,
+                            "visual_en": visual_en,
+                            "err":       img.get("err","") if not img["ok"] else "",
+                        })
                         if not img["ok"]:
                             failed_list.append(idx + 1)
 
                     prog.progress((idx + 1) / num)
 
                 st.session_state.preview_images = new_images
-
                 if failed_list:
                     st.warning(
                         f"⚠️ 第 {failed_list} 张生成失败，"
@@ -1356,16 +1370,16 @@ def render_generating_stage():
             first_url = (st.session_state.preview_images[0].get("url")
                          if st.session_state.preview_images else None)
             st.session_state.generated_mods.append({
-                "id":        len(st.session_state.generated_mods) + 1,
-                "name":      d.get("name", spec.get("mod_name_en",
-                             f"Mod_{datetime.now().strftime('%H%M')}")),
-                "name_cn":   spec.get("mod_name_cn", ""),
-                "desc":      d.get("desc", spec.get("description", "")),
-                "date":      datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "design":    st.session_state.final_design,
-                "spec":      spec,
-                "all_files": d.get("files", {}),
-                "image_url": first_url,
+                "id":       len(st.session_state.generated_mods) + 1,
+                "name":     d.get("name", spec.get(
+                    "mod_name_en", f"Mod_{datetime.now().strftime('%H%M')}")),
+                "name_cn":  spec.get("mod_name_cn", ""),
+                "desc":     d.get("desc", spec.get("description", "")),
+                "date":     datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "design":   st.session_state.final_design,
+                "spec":     spec,
+                "all_files":d.get("files", {}),
+                "image_url":first_url,
                 "all_images": [
                     img.get("url") for img in st.session_state.preview_images
                     if img.get("url")
@@ -1388,17 +1402,18 @@ def _enter_preview():
         st.session_state.final_design = json.dumps(
             spec, ensure_ascii=False, indent=2)
 
-    with st.spinner("✦ 准备视觉方案……"):
+    with st.spinner("✦ AI 正在为每个对象生成专属绘图描述……"):
         visual = optimize_visual_prompt(spec)
         st.session_state.visual_result = visual
 
+        # 调试输出
         all_prompts = visual.get("all_prompts", [])
-        print(f"[DEBUG] 生成 {len(all_prompts)} 条图片 prompt：")
+        print(f"[DEBUG] 共生成 {len(all_prompts)} 条图片 prompt：")
         for i, ap in enumerate(all_prompts):
-            raw   = ap.get("prompt", "")
-            clean = _clean_for_url(raw, max_chars=220)
-            print(f"  #{i+1} [{ap.get('label','')}] 原始={len(raw)}字符 "
-                  f"清理后={len(clean)}字符: {clean[:80]}")
+            print(f"  #{i+1} [{ap.get('label','')}]")
+            print(f"    视觉描述: {ap.get('visual_en','')}")
+            print(f"    完整prompt({len(ap.get('prompt',''))}字符): "
+                  f"{ap.get('prompt','')[:80]}...")
 
     with st.spinner("✦ 编排音效方案……"):
         sound = generate_sound_prompts(spec)
@@ -1453,7 +1468,8 @@ def render_chat_stage(mode: str):
                          if isinstance(r, dict) else str(r))
             except Exception as exc:
                 reply = f"（永恒大陆沉默了：{exc}）"
-        st.session_state.messages.append({"role": "assistant", "content": reply})
+        st.session_state.messages.append(
+            {"role": "assistant", "content": reply})
         st.rerun()
 
     if len(st.session_state.messages) >= 2:
@@ -1533,7 +1549,7 @@ def show_producer_message():
       </p>
       <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
         <li>多对象MOD设计（如四种花各有独立设计）</li>
-        <li>每个对象独立贴图生成（1–4张，各对应真实内容）</li>
+        <li>每个对象独立贴图生成（1–4张，AI为每个对象生成专属视觉描述）</li>
         <li>阵营感知音效（影系/月亮系/自然系各有特色）</li>
         <li>完整Lua代码框架一键生成</li>
         <li>打包ZIP直接安装</li>
@@ -1544,6 +1560,7 @@ def show_producer_message():
       <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
         <li>最多支持生成 <strong>4 张</strong>贴图（当前工具上限）</li>
         <li>第 1 张自动作为 MOD 图标，其余存入 images/ 目录</li>
+        <li>每张图由 AI 根据对象外观描述独立生成视觉 Prompt，内容真实对应</li>
         <li>如 AI 生成失败，可点击「🔄 重生成」单独重试</li>
         <li>如需更多贴图，下载 MOD 包后手动在 images/ 目录添加</li>
       </ul>
@@ -1579,10 +1596,12 @@ def show_install_guide():
     st.warning("⚠️ `api_version` 必须为 **10**")
     st.warning("⚠️ 多人游戏时所有玩家需安装")
     st.markdown("### 四、贴图说明")
-    st.info(f"📌 本工具最多生成 **{MAX_IMAGES} 张**贴图（1 张主图标 + 最多 3 张变体）")
+    st.info(f"📌 本工具最多生成 **{MAX_IMAGES} 张**贴图"
+            f"（1 张主图标 + 最多 3 张变体）")
     st.write("• 第一张贴图自动作为 `modicon`（MOD图标）")
-    st.write(f"• 第 2–{MAX_IMAGES} 张存放在 `images/` 目录，可在代码中按名称引用")
-    st.write(f"• 如需超过 {MAX_IMAGES} 张，下载后在 `images/` 目录手动添加即可")
+    st.write(f"• 第 2–{MAX_IMAGES} 张存放在 `images/` 目录")
+    st.write("• 每张图由 AI 根据该对象外观独立生成，内容与设计对应")
+    st.write(f"• 如需超过 {MAX_IMAGES} 张，下载后在 `images/` 目录手动添加")
     st.markdown("### 五、音效说明")
     st.write("• 音效为 Web Audio 合成预览，正式发布时建议替换为 .wav 文件")
     st.markdown("---")
@@ -1724,7 +1743,8 @@ with st.sidebar:
             with st.expander(label):
                 st.markdown(f"**{mod['date']}**  ·  `{mod['name']}`")
                 if mod.get("desc"):
-                    desc_text = mod["desc"][:100] + ("..." if len(mod["desc"]) > 100 else "")
+                    desc_text = (mod["desc"][:100]
+                                 + ("..." if len(mod["desc"]) > 100 else ""))
                     st.caption(desc_text)
 
                 all_imgs = mod.get("all_images", [])
@@ -1736,7 +1756,6 @@ with st.sidebar:
                 elif mod.get("image_url"):
                     st.image(mod["image_url"], width=110)
 
-                # 贴图数量提示
                 img_count = len(all_imgs)
                 if img_count > 0:
                     st.caption(
@@ -1753,14 +1772,17 @@ with st.sidebar:
                     key=f"dl_{mod['id']}"
                 )
                 if st.button("✦ 重新优化",
-                             key=f"re_{mod['id']}", use_container_width=True):
+                             key=f"re_{mod['id']}",
+                             use_container_width=True):
                     st.session_state.update({
-                        "mode": "explore", "stage": "chat",
-                        "final_design": mod["design"],
-                        "messages": [{"role": "user",
-                                      "content": mod.get("design", "")}],
+                        "mode":    "explore",
+                        "stage":   "chat",
+                        "final_design":    mod["design"],
+                        "messages":        [{"role": "user",
+                                             "content": mod.get("design", "")}],
                         "sound_audio_cache": {},
-                        "preview_images": [], "num_images": 1,
+                        "preview_images":  [],
+                        "num_images":      1,
                         "show_producer_msg": False,
                     })
                     st.rerun()
