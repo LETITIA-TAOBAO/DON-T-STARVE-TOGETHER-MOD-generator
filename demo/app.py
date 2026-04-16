@@ -1,6 +1,7 @@
 import streamlit as st
 import io
 import json
+import re
 import zipfile
 import requests
 import base64
@@ -284,19 +285,17 @@ div[data-testid="stButton"]>button:hover {{
 
 .sound-card {{
     background:rgba(8,20,10,0.82); border:1px solid #2a4a2a;
-    border-radius:5px; padding:11px 14px; margin:7px 0; transition:border-color 0.2s;
+    border-radius:5px; padding:11px 14px; margin:7px 0;
+    transition:border-color 0.2s;
 }}
 .sound-card:hover {{ border-color:#4A9A50; }}
 .sound-trigger {{
     font-family:'Cinzel',serif !important; font-size:0.70rem !important;
     color:#4A9A50 !important; letter-spacing:2px; display:block; margin-bottom:3px;
 }}
-.sound-desc  {{
+.sound-desc {{
     font-size:0.87rem !important; color:#C0D8C0 !important;
     display:block; margin-bottom:4px;
-}}
-.sound-prompt {{
-    font-size:0.68rem !important; color:#3a5a3a !important; font-style:italic !important;
 }}
 
 .img-card {{
@@ -347,7 +346,6 @@ audio {{
 .st-expander [data-testid="stMarkdownContainer"] p {{
     margin: 4px 0 !important; line-height: 1.5 !important;
 }}
-
 hr {{
     border:none !important;
     border-top:1px solid rgba(139,100,32,0.28) !important;
@@ -373,27 +371,56 @@ def generate_atlas_xml() -> str:
 '''
 
 
+def _clean_for_url(text: str, max_words: int = 40) -> str:
+    """清理文本用于 URL：移除中文、截断、清理特殊字符"""
+    text = re.sub(r'[\u4e00-\u9fff]+', '', text)
+    text = re.sub(r'[^\w\s,\-]', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    words = text.split()
+    if len(words) > max_words:
+        text = ' '.join(words[:max_words])
+    return text
+
+
 def fetch_image(prompt: str, negative: str = "") -> dict:
+    """修复版图片获取：严格控制 URL 长度，移除中文"""
     try:
-        full_negative = (
-            "realistic, 3d render, photographic, bright saturated colors, "
-            "anime, smooth shading, modern, clean lines, digital painting, "
-            "gradient, text, watermark, logo, blurry, " + negative
-        ).strip(", ")
-        enc     = prompt.replace(" ", "+").replace("&", "%26")
-        neg_enc = full_negative.replace(" ", "+").replace("&", "%26")
-        url = (
+        # 清理 prompt
+        clean_prompt = _clean_for_url(prompt, max_words=45)
+        if not clean_prompt or len(clean_prompt) < 5:
+            clean_prompt = (
+                "Don't Starve Together game art style dark gothic flower item "
+                "hand-drawn sketch muted colors"
+            )
+
+        # negative 固定使用短版本，避免 URL 过长
+        fixed_negative = (
+            "realistic, 3d render, photographic, bright colors, "
+            "anime, smooth, modern, gradient, text, watermark, blurry"
+        )
+
+        enc     = clean_prompt.replace(" ", "%20").replace(",", "%2C")
+        neg_enc = fixed_negative.replace(" ", "%20").replace(",", "%2C")
+
+        seed = int(datetime.now().timestamp()) % 99999
+        url  = (
             f"https://image.pollinations.ai/prompt/{enc}"
             f"?width=512&height=512&nologo=true"
-            f"&negative={neg_enc}&model=flux"
-            f"&seed={int(datetime.now().timestamp())}"
+            f"&negative={neg_enc}"
+            f"&model=flux"
+            f"&seed={seed}"
         )
-        r = requests.get(url, timeout=60)
+
+        r = requests.get(url, timeout=90)
         if r.status_code == 200 and len(r.content) > 1000:
-            return {"ok": True,
-                    "b64": base64.b64encode(r.content).decode(),
-                    "url": url}
+            return {
+                "ok":  True,
+                "b64": base64.b64encode(r.content).decode(),
+                "url": url,
+            }
         return {"ok": False, "err": f"HTTP {r.status_code}"}
+    except requests.Timeout:
+        return {"ok": False, "err": "图片生成超时（>90s），请重试"}
     except Exception as e:
         return {"ok": False, "err": str(e)}
 
@@ -402,19 +429,12 @@ def make_zip(mod: dict) -> bytes:
     install_txt = """══════════════════════════════════════
 饥荒联机版 MOD 安装指南
 ══════════════════════════════════════
-
-【手动安装】
 ① 解压本 ZIP 文件
-② 将解压后的文件夹复制到：
-   Windows:
-   C:/Users/你的用户名/Documents/Klei/DoNotStarveTogether/mods/
-   Steam 路径:
-   Steam/steamapps/common/Don't Starve Together/mods/
-③ 启动游戏 → 主菜单 → 模组，找到本 Mod → 点击启用
-④ 创建或进入存档，Mod 即刻生效
-
-⚠️ api_version 必须为 10
-⚠️ 多人游戏所有玩家需安装
+② 将文件夹复制到：
+   Windows: C:/Users/用户名/Documents/Klei/DoNotStarveTogether/mods/
+   Steam:   Steam/steamapps/common/Don't Starve Together/mods/
+③ 游戏主菜单 → 模组 → 找到 MOD → 启用
+④ api_version 必须为 10，多人游戏所有玩家需安装
 ══════════════════════════════════════
 CREATED BY DST MOD GENERATOR · PRODUCER · LETITIA
 ══════════════════════════════════════
@@ -453,64 +473,59 @@ def render_chat(messages: list):
 
 def reset_to_home():
     st.session_state.update({
-        "mode": "home",
-        "stage": "chat",
-        "messages": [],
-        "final_design": "",
-        "design_spec": None,
-        "visual_result": None,
-        "sound_result": None,
-        "preview_images": [],
-        "preview_approved": False,
-        "generating": False,
-        "sound_audio_cache": {},
-        "show_producer_msg": False,
+        "mode": "home", "stage": "chat",
+        "messages": [], "final_design": "",
+        "design_spec": None, "visual_result": None,
+        "sound_result": None, "preview_images": [],
+        "preview_approved": False, "generating": False,
+        "sound_audio_cache": {}, "show_producer_msg": False,
         "num_images": 1,
     })
 
 
-def _image_variant_prompt(base_prompt: str, idx: int,
-                           total: int, spec: dict) -> str:
-    """优先读 all_prompts 中对应条目，否则降级为变体词"""
+def _get_image_prompt_for_idx(idx: int) -> str:
+    """获取第 idx 张图对应的 prompt（优先从 all_prompts 读取）"""
     visual      = st.session_state.visual_result or {}
     all_prompts = visual.get("all_prompts", [])
-
     if idx < len(all_prompts):
-        return all_prompts[idx]["prompt"]
-
-    # 降级：在 base_prompt 基础上加变体词
-    variants = [
-        f"{base_prompt}, variant {idx+1}, slightly different composition",
-        f"{base_prompt}, different angle view, variant design {idx+1}",
-        f"{base_prompt}, alternate color variation {idx+1}, same style",
-        f"{base_prompt}, different lighting mood, variant {idx+1}",
-    ]
-    return variants[idx % len(variants)]
+        return all_prompts[idx].get("prompt", "")
+    # 降级：用基础 prompt 加变体词
+    base = visual.get("optimized_prompt", "")
+    return f"{base}, variant {idx + 1}" if base else ""
 
 
-def _image_label(idx: int, spec: dict, default: str) -> str:
-    """从 all_prompts 或 spec 中获取图片标签"""
+def _get_image_label_for_idx(idx: int, default: str) -> str:
+    """获取第 idx 张图的标签"""
     visual      = st.session_state.visual_result or {}
     all_prompts = visual.get("all_prompts", [])
     if idx < len(all_prompts):
         return all_prompts[idx].get("label", default)
-    return default
+    return f"{default} #{idx + 1}"
+
+
+def _get_negative_prompt() -> str:
+    visual = st.session_state.visual_result or {}
+    return visual.get("negative_prompt",
+                      "realistic, 3d render, photographic, bright colors, "
+                      "anime, smooth, modern, gradient, text, watermark, blurry")
 
 # ══════════════════════════════════════════════════════════════
 # 🔊 音效合成 HTML
 # ══════════════════════════════════════════════════════════════
 
 def synth_audio_html(params: dict, element_id: str) -> str:
+    if not params:
+        return ""
     p          = params
-    safe_id    = element_id.replace("-", "")
-    stype      = p.get("type", "sound").upper()
-    dur        = p.get("duration", 0.5)
+    safe_id    = re.sub(r'\W', '', element_id)
+    stype      = str(p.get("type", "sound")).upper()[:20]
+    dur        = float(p.get("duration", 0.5))
     osc_type   = p.get("oscillator", "triangle")
-    freq_start = p.get("frequency_start", 300)
-    freq_end   = max(p.get("frequency_end", 150), 20)
-    gain_start = p.get("gain_start", 0.5)
-    gain_end   = max(p.get("gain_end", 0.01), 0.001)
-    noise_mix  = p.get("noise_mix", 0.2)
+    freq_start = float(p.get("frequency_start", 300))
+    freq_end   = max(float(p.get("frequency_end", 150)), 20.0)
+    gain_start = float(p.get("gain_start", 0.5))
+    gain_end   = max(float(p.get("gain_end", 0.01)), 0.001)
+    noise_mix  = float(p.get("noise_mix", 0.2))
 
     vibrato_js = ""
     if p.get("vibrato"):
@@ -597,8 +612,38 @@ function playSynth_{safe_id}() {{
 """
 
 # ══════════════════════════════════════════════════════════════
-# 🔊 音效试听组件
+# 🔊 音效试听组件（重构版）
 # ══════════════════════════════════════════════════════════════
+
+def _get_or_generate_sfx(cache_key: str, sfx_data: dict,
+                          trigger_type: str = "pickup",
+                          duration: str = "short") -> dict:
+    """
+    从缓存获取或生成音效。
+    优先使用 sound_result 里 LLM 直接生成的 synth_params。
+    """
+    cache = st.session_state.sound_audio_cache
+    if cache_key in cache:
+        return cache[cache_key]
+
+    # 优先使用 LLM 生成的 synth_params
+    if sfx_data.get("synth_params"):
+        result = {
+            "ok":           True,
+            "source":       "synth",
+            "synth_params": sfx_data["synth_params"],
+            "format":       "synth",
+        }
+    else:
+        result = generate_sound_effect(
+            search_keywords = sfx_data.get("trigger", ""),
+            prompt_en       = sfx_data.get("description_cn", ""),
+            faction         = sfx_data.get("faction", "neutral"),
+            trigger_type    = trigger_type,
+            duration        = duration,
+        )
+    return result
+
 
 def render_sound_preview(sound: dict):
     st.markdown('<div class="preview-box">', unsafe_allow_html=True)
@@ -618,32 +663,38 @@ def render_sound_preview(sound: dict):
 
     cache = st.session_state.sound_audio_cache
 
+    # 阵营颜色映射
+    faction_colors = {
+        "shadow":  "#9a6aaa",
+        "lunar":   "#6aaaca",
+        "nature":  "#4A9A50",
+        "neutral": "#8a8a6a",
+    }
+
     for i, sfx in enumerate(sfx_list):
-        trigger   = sfx.get("trigger", f"音效{i+1}")
-        desc_cn   = sfx.get("description_cn", "")
-        prompt_en = sfx.get("prompt_en", "")
-        keywords  = sfx.get("search_keywords", "")
-        duration  = sfx.get("duration", "short")
-        cache_key = f"sfx_{i}"
+        trigger      = sfx.get("trigger", f"音效{i+1}")
+        desc_cn      = sfx.get("description_cn", "")
+        faction      = sfx.get("faction", "neutral")
+        trigger_type = sfx.get("trigger_type", "pickup")
+        cache_key    = f"sfx_{i}"
+        color        = faction_colors.get(faction, "#4A9A50")
 
         st.markdown(f"""
         <div class="sound-card">
-          <span class="sound-trigger">▶ {trigger.upper()}</span>
+          <span class="sound-trigger" style="color:{color};">
+            ▶ {trigger.upper()} · {faction.upper()}
+          </span>
           <span class="sound-desc">{desc_cn}</span>
-          <span class="sound-prompt">{prompt_en}</span>
         </div>
         """, unsafe_allow_html=True)
 
         if cache_key in cache:
             entry = cache[cache_key]
-            if entry.get("ok"):
-                if entry.get("source") == "synth":
-                    html = synth_audio_html(
-                        entry.get("synth_params", {}), f"sfx{i}")
+            if entry.get("ok") and entry.get("source") == "synth":
+                html = synth_audio_html(entry.get("synth_params", {}),
+                                        f"sfx{i}")
+                if html:
                     st.components.v1.html(html, height=55)
-                else:
-                    fmt = entry.get("format", "wav")
-                    st.audio(entry["audio_bytes"], format=f"audio/{fmt}")
                 if st.button("🔄 重新生成", key=f"regen_sfx_{i}",
                              use_container_width=True):
                     del st.session_state.sound_audio_cache[cache_key]
@@ -661,35 +712,31 @@ def render_sound_preview(sound: dict):
             if st.button("🎵 生成试听", key=f"gen_sfx_{i}",
                          use_container_width=True):
                 with st.spinner(f"✦ 召唤「{trigger}」音效……"):
-                    result = generate_sound_effect(keywords, prompt_en, duration)
+                    result = _get_or_generate_sfx(
+                        cache_key, sfx, trigger_type)
                     st.session_state.sound_audio_cache[cache_key] = result
                 st.rerun()
 
+    # Ambient
     if ambient.get("needed"):
-        amb_desc   = ambient.get("description_cn", "")
-        amb_prompt = ambient.get("prompt_en", "")
-        amb_kw     = ambient.get("search_keywords", "")
-        amb_key    = "sfx_ambient"
+        amb_desc = ambient.get("description_cn", "")
+        amb_key  = "sfx_ambient"
 
         st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown(f"""
         <div class="sound-card" style="border-color:#1a3a2a;">
           <span class="sound-trigger" style="color:#3a8a6a;">♪ AMBIENT</span>
           <span class="sound-desc">{amb_desc}</span>
-          <span class="sound-prompt">{amb_prompt}</span>
         </div>
         """, unsafe_allow_html=True)
 
         if amb_key in cache:
             entry = cache[amb_key]
             if entry.get("ok"):
-                if entry.get("source") == "synth":
-                    html = synth_audio_html(
-                        entry.get("synth_params", {}), "ambient")
+                html = synth_audio_html(
+                    entry.get("synth_params", {}), "ambient")
+                if html:
                     st.components.v1.html(html, height=55)
-                else:
-                    fmt = entry.get("format", "wav")
-                    st.audio(entry["audio_bytes"], format=f"audio/{fmt}")
                 if st.button("🔄 重新生成环境音", key="regen_ambient",
                              use_container_width=True):
                     del st.session_state.sound_audio_cache[amb_key]
@@ -707,7 +754,8 @@ def render_sound_preview(sound: dict):
             if st.button("🎵 生成环境音试听", key="gen_ambient",
                          use_container_width=True):
                 with st.spinner("✦ 编织环境音效……"):
-                    result = generate_sound_effect(amb_kw, amb_prompt, "medium")
+                    result = _get_or_generate_sfx(
+                        amb_key, ambient, "ambient", "medium")
                     st.session_state.sound_audio_cache[amb_key] = result
                 st.rerun()
 
@@ -724,19 +772,19 @@ def render_sound_preview(sound: dict):
             prog = st.progress(0)
             for idx, key in enumerate(uncached):
                 if key == "sfx_ambient":
-                    kw   = ambient.get("search_keywords", "")
-                    prmt = ambient.get("prompt_en", "")
-                    dur  = "medium"
-                    name = "环境音"
+                    sfx_data = ambient
+                    name     = "环境音"
+                    t_type   = "ambient"
+                    dur      = "medium"
                 else:
-                    n    = int(key.split("_")[1])
-                    s    = sfx_list[n]
-                    kw   = s.get("search_keywords", "")
-                    prmt = s.get("prompt_en", "")
-                    dur  = s.get("duration", "short")
-                    name = s.get("trigger", "")
+                    n        = int(key.split("_")[1])
+                    sfx_data = sfx_list[n]
+                    name     = sfx_data.get("trigger", "")
+                    t_type   = sfx_data.get("trigger_type", "pickup")
+                    dur      = "short"
+
                 with st.spinner(f"✦ 生成「{name}」({idx+1}/{len(uncached)})…"):
-                    r = generate_sound_effect(kw, prmt, dur)
+                    r = _get_or_generate_sfx(key, sfx_data, t_type, dur)
                     st.session_state.sound_audio_cache[key] = r
                 prog.progress((idx + 1) / len(uncached))
             st.rerun()
@@ -744,19 +792,15 @@ def render_sound_preview(sound: dict):
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════
-# 🎨 多图预览组件
+# 🎨 多图预览组件（重构版）
 # ══════════════════════════════════════════════════════════════
 
 def render_image_gallery(visual: dict, spec: dict):
-    """渲染多图预览区，支持逐张重生成"""
-    images   = st.session_state.preview_images
-    n        = len(images)
-    obj      = spec.get("main_object", {})
-    name_cn  = obj.get("name_cn", "MOD 图标")
-    prompt   = visual.get("optimized_prompt",
-               visual.get("fallback_prompt",
-               "Don't Starve Together style dark fantasy item"))
-    negative = visual.get("negative_prompt", "")
+    """渲染多图预览区，每张图对应一个对象"""
+    images  = st.session_state.preview_images
+    n       = len(images)
+    obj     = spec.get("main_object", {})
+    name_cn = obj.get("name_cn", "MOD 图标")
 
     st.markdown('<div class="preview-box">', unsafe_allow_html=True)
     st.markdown('<p class="preview-box-title">🎨 外观预览</p>',
@@ -783,24 +827,26 @@ def render_image_gallery(visual: dict, spec: dict):
                 st.markdown('<div class="img-card">', unsafe_allow_html=True)
                 if img_data.get("url"):
                     st.image(img_data["url"], use_container_width=True)
+                    label = img_data.get("label", name_cn)
                     st.markdown(
-                        f'<span class="img-card-label">'
-                        f'{img_data.get("label", name_cn)}</span>',
+                        f'<span class="img-card-label">{label}</span>',
                         unsafe_allow_html=True)
                 else:
                     st.markdown(
-                        '<p style="color:#4a3820;text-align:center;'
-                        'font-style:italic;padding:20px 0;">生成失败</p>',
+                        '<p style="color:#6a3820;text-align:center;'
+                        'font-style:italic;padding:20px 0;font-size:0.8rem;">'
+                        '生成失败，请重试</p>',
                         unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
                 if st.button(f"🔄 重生成 #{global_idx+1}",
                              key=f"regen_img_{global_idx}",
                              use_container_width=True):
-                    with st.spinner(f"✦ 重新召唤图腾 #{global_idx+1}……"):
-                        var_prompt = _image_variant_prompt(
-                            prompt, global_idx, n, spec)
-                        new_img = fetch_image(var_prompt, negative)
+                    with st.spinner(
+                            f"✦ 重新召唤「{img_data.get('label','')}」……"):
+                        prompt = _get_image_prompt_for_idx(global_idx)
+                        neg    = _get_negative_prompt()
+                        new_img = fetch_image(prompt, neg)
                         if new_img["ok"]:
                             st.session_state.preview_images[global_idx] = {
                                 "url":   new_img["url"],
@@ -811,25 +857,29 @@ def render_image_gallery(visual: dict, spec: dict):
                             st.warning(f"生成失败：{new_img['err']}")
                     st.rerun()
 
-    # 提示词展示
-    used = visual.get("optimized_prompt", "")
-    if used:
-        st.markdown(
-            f'<p style="font-size:0.68rem;color:#4a3820;font-style:italic;'
-            f'text-align:center;margin-top:8px;">'
-            f'{used[:100]}{"…" if len(used) > 100 else ""}</p>',
-            unsafe_allow_html=True)
+    # 提示词预览
+    all_prompts = visual.get("all_prompts", [])
+    if all_prompts:
+        with st.expander("查看绘图 Prompt", expanded=False):
+            for i, ap in enumerate(all_prompts[:n]):
+                st.markdown(
+                    f'<p style="font-size:0.68rem;color:#4a3820;'
+                    f'font-style:italic;margin:2px 0;">'
+                    f'#{i+1} {ap.get("label","")}: '
+                    f'{ap.get("prompt","")[:80]}…</p>',
+                    unsafe_allow_html=True)
 
     # 一键重生成全部
     if st.button("🔄 重新生成全部图片",
                  key="regen_all_imgs", use_container_width=True):
-        with st.spinner(f"✦ 召唤 {n} 张新图腾……"):
+        with st.spinner(f"✦ 重新召唤全部 {n} 张图腾……"):
+            neg        = _get_negative_prompt()
             new_images = []
             for idx in range(n):
-                var_prompt = _image_variant_prompt(prompt, idx, n, spec)
-                label      = (images[idx].get("label", name_cn)
-                              if idx < len(images) else name_cn)
-                img = fetch_image(var_prompt, negative)
+                prompt = _get_image_prompt_for_idx(idx)
+                label  = (images[idx].get("label", name_cn)
+                          if idx < len(images) else name_cn)
+                img = fetch_image(prompt, neg)
                 new_images.append({
                     "url":   img["url"] if img["ok"] else None,
                     "b64":   img["b64"] if img["ok"] else None,
@@ -878,11 +928,28 @@ def render_preview_stage():
         <span class="spec-value">{spec.get("core_function","—")}</span>
       </div>
       <div class="spec-item" style="grid-column:span 2">
-        <span class="spec-label">MAIN OBJECT · {obj.get("name_cn","")}</span>
+        <span class="spec-label">
+          OBJECTS · {obj.get("name_cn","")}
+          {" + " + str(len(spec.get("sub_objects",[]))) + " 个变体"
+           if spec.get("sub_objects") else ""}
+        </span>
         <span class="spec-value">{obj.get("appearance","—")}</span>
       </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # 子对象列表
+    subs = spec.get("sub_objects", [])
+    if subs:
+        sub_html = "".join(
+            f'<div class="spec-item">'
+            f'<span class="spec-label">{s.get("name_cn","")}</span>'
+            f'<span class="spec-value">{s.get("appearance","")[:60]}</span>'
+            f'</div>'
+            for s in subs
+        )
+        st.markdown(f'<div class="spec-grid">{sub_html}</div>',
+                    unsafe_allow_html=True)
 
     stats      = spec.get("stats", {})
     stat_items = [(k.upper(), v) for k, v in stats.items() if v is not None]
@@ -907,8 +974,12 @@ def render_preview_stage():
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ── 贴图数量选择（仅在图片尚未生成时显示）──────────
+    # ── 贴图数量选择（图片未生成时显示）──────────────────
     if not st.session_state.preview_images:
+        # 从 all_prompts 推断推荐数量
+        all_prompts     = visual.get("all_prompts", [])
+        suggested_count = max(1, min(len(all_prompts), 4)) if all_prompts else 1
+
         st.markdown("""
         <p style="text-align:center;font-size:0.86rem;color:#7a6040;
                   margin-bottom:6px;letter-spacing:1px;">
@@ -916,21 +987,14 @@ def render_preview_stage():
         </p>
         """, unsafe_allow_html=True)
 
-        # 从 all_prompts 获取推荐数量
-        all_prompts     = visual.get("all_prompts", [])
-        suggested_count = len(all_prompts) if all_prompts else 1
-        suggested_count = max(1, min(suggested_count, 4))
-
         col_n1, col_n2, col_n3 = st.columns([1, 2, 1])
         with col_n2:
-            # 如果 LLM 给出了推荐数量，显示提示
             if suggested_count > 1:
                 st.markdown(
                     f'<p style="text-align:center;font-size:0.78rem;'
                     f'color:#7a5a28;margin-bottom:4px;">'
-                    f'✦ 根据设计，推荐生成 {suggested_count} 张</p>',
+                    f'✦ 检测到 {suggested_count} 种对象，推荐生成 {suggested_count} 张</p>',
                     unsafe_allow_html=True)
-
             num = st.select_slider(
                 "贴图数量",
                 options=[1, 2, 3, 4],
@@ -948,26 +1012,37 @@ def render_preview_stage():
         with col_g2:
             if st.button("✦ 生成贴图预览",
                          key="gen_imgs_btn", use_container_width=True):
-                prompt   = visual.get("optimized_prompt",
-                           visual.get("fallback_prompt",
-                           "Don't Starve Together style dark fantasy item"))
-                negative = visual.get("negative_prompt", "")
-                name_cn  = obj.get("name_cn", "MOD图标")
+                neg        = _get_negative_prompt()
+                name_cn    = obj.get("name_cn", "MOD图标")
                 new_images = []
                 prog = st.progress(0)
                 for idx in range(num):
-                    label = _image_label(idx, spec, f"{name_cn} #{idx+1}")
+                    label  = _get_image_label_for_idx(idx, name_cn)
+                    prompt = _get_image_prompt_for_idx(idx)
+                    if not prompt:
+                        prompt = (
+                            "Don't Starve Together game art style "
+                            "Tim Burton gothic cartoon dark flower item "
+                            "hand-drawn sketch muted colors parchment"
+                        )
                     with st.spinner(f"✦ 生成「{label}」({idx+1}/{num})……"):
-                        var_prompt = _image_variant_prompt(
-                            prompt, idx, num, spec)
-                        img = fetch_image(var_prompt, negative)
+                        img = fetch_image(prompt, neg)
                         new_images.append({
                             "url":   img["url"] if img["ok"] else None,
                             "b64":   img["b64"] if img["ok"] else None,
                             "label": label,
+                            "err":   img.get("err", "") if not img["ok"] else "",
                         })
                     prog.progress((idx + 1) / num)
+
                 st.session_state.preview_images = new_images
+                # 检查是否有失败的
+                failed = [i for i, im in enumerate(new_images)
+                          if not im.get("url")]
+                if failed:
+                    st.warning(
+                        f"⚠️ 第 {[f+1 for f in failed]} 张生成失败，"
+                        f"可点击「重生成」重试")
                 st.rerun()
 
         st.markdown("<hr>", unsafe_allow_html=True)
@@ -1043,22 +1118,23 @@ def render_generating_stage():
         images = st.session_state.get("preview_images", [])
         files  = result.setdefault("data", {}).setdefault("files", {})
 
+        sealed = 0
         if images:
-            # 第一张作为 modicon
             first = images[0]
             if first.get("b64"):
                 files["modicon.tex"] = base64.b64decode(first["b64"])
                 files["modicon.xml"] = generate_atlas_xml()
+                sealed += 1
 
-            # 其余张存入 images/ 目录
             for idx, img_data in enumerate(images[1:], start=2):
                 if img_data.get("b64"):
                     label = img_data.get("label", f"variant_{idx}")
-                    safe  = label.replace(" ", "_").replace("#", "")
+                    safe  = re.sub(r'[^\w]', '_', label)
                     files[f"images/{safe}.png"] = base64.b64decode(
                         img_data["b64"])
+                    sealed += 1
 
-            st.success(f"✦ {len(images)} 张图像已封印！")
+            st.success(f"✦ {sealed} 张图像已封印！")
         else:
             st.warning("永恒形象缺失，跳过。")
     bar.progress(65)
@@ -1070,27 +1146,25 @@ def render_generating_stage():
         packed   = 0
 
         for i, sfx in enumerate(sfx_list):
-            key = f"sfx_{i}"
-            if key in cache and cache[key].get("ok"):
-                entry = cache[key]
-                if entry.get("source") == "synth":
-                    continue
+            key   = f"sfx_{i}"
+            entry = cache.get(key, {})
+            if entry.get("ok") and entry.get("source") != "synth":
                 trig = sfx.get("trigger", "sfx").replace(" ", "_")
                 fmt  = entry.get("format", "wav")
                 files[f"sounds/{trig}_{i}.{fmt}"] = entry["audio_bytes"]
                 packed += 1
 
-        if "sfx_ambient" in cache and cache["sfx_ambient"].get("ok"):
+        if "sfx_ambient" in cache:
             entry = cache["sfx_ambient"]
-            if entry.get("source") != "synth":
+            if entry.get("ok") and entry.get("source") != "synth":
                 fmt = entry.get("format", "wav")
                 files[f"sounds/ambient.{fmt}"] = entry["audio_bytes"]
                 packed += 1
 
         if packed:
-            st.success(f"✦ 已封印 {packed} 个音效！")
+            st.success(f"✦ 已封印 {packed} 个音效文件！")
         else:
-            st.info("音效为合成预览，未打包到MOD中。")
+            st.info("音效为合成预览，未打包（合成音效在游戏内由代码实现）。")
     bar.progress(85)
 
     with st.spinner("✦ 归入典藏……"):
@@ -1100,22 +1174,23 @@ def render_generating_stage():
         })
         d = result.get("data", {})
         if d:
-            first_url = (st.session_state.preview_images[0]["url"]
+            first_url = (st.session_state.preview_images[0].get("url")
                          if st.session_state.preview_images else None)
             st.session_state.generated_mods.append({
-                "id":       len(st.session_state.generated_mods) + 1,
-                "name":     d.get("name", spec.get("mod_name_en",
-                            f"Mod_{datetime.now().strftime('%H%M')}")),
-                "name_cn":  spec.get("mod_name_cn", ""),
-                "desc":     d.get("desc", spec.get("description", "")),
-                "date":     datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "design":   st.session_state.final_design,
-                "spec":     spec,
+                "id":        len(st.session_state.generated_mods) + 1,
+                "name":      d.get("name", spec.get("mod_name_en",
+                             f"Mod_{datetime.now().strftime('%H%M')}")),
+                "name_cn":   spec.get("mod_name_cn", ""),
+                "desc":      d.get("desc", spec.get("description", "")),
+                "date":      datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "design":    st.session_state.final_design,
+                "spec":      spec,
                 "all_files": d.get("files", {}),
                 "image_url": first_url,
-                "all_images": [img.get("url") for img in
-                               st.session_state.preview_images
-                               if img.get("url")],
+                "all_images": [
+                    img.get("url") for img in st.session_state.preview_images
+                    if img.get("url")
+                ],
             })
     bar.progress(100)
 
@@ -1138,11 +1213,23 @@ def _enter_preview():
         visual = optimize_visual_prompt(spec)
         st.session_state.visual_result = visual
 
+        # 打印调试信息（部署时可删除）
+        all_prompts = visual.get("all_prompts", [])
+        print(f"[DEBUG] 生成 {len(all_prompts)} 条图片 prompt：")
+        for i, ap in enumerate(all_prompts):
+            print(f"  #{i+1} [{ap.get('label','')}]: {ap.get('prompt','')[:80]}")
+
     with st.spinner("✦ 编排音效方案……"):
         sound = generate_sound_prompts(spec)
         st.session_state.sound_result = sound
 
-    # 重置状态，让用户在预览页自行选数量并生成
+        # 打印调试信息（部署时可删除）
+        sfx_list = sound.get("sound_effects", [])
+        print(f"[DEBUG] 生成 {len(sfx_list)} 条音效：")
+        for sfx in sfx_list:
+            print(f"  [{sfx.get('faction','')}] {sfx.get('trigger','')}："
+                  f"{sfx.get('description_cn','')}")
+
     st.session_state.preview_images    = []
     st.session_state.sound_audio_cache = {}
     st.session_state.num_images        = 1
@@ -1182,7 +1269,8 @@ def render_chat_stage(mode: str):
                     r = explore_with_llm(st.session_state.messages)
                 else:
                     r = rapid_with_llm(st.session_state.messages)
-                reply = r.get("text", str(r)) if isinstance(r, dict) else str(r)
+                reply = (r.get("text", str(r))
+                         if isinstance(r, dict) else str(r))
             except Exception as exc:
                 reply = f"（永恒大陆沉默了：{exc}）"
         st.session_state.messages.append({"role": "assistant", "content": reply})
@@ -1257,24 +1345,18 @@ def show_producer_message():
         以及对<strong>创造自由</strong>的向往。
       </p>
       <p style="margin-bottom:18px;">
-        它的核心使命是：<strong style="color:#FFD700;">让每一位想在游戏世界中自由创造、
+        核心使命：<strong style="color:#FFD700;">让每一位想在游戏世界中自由创造、
         但不会编写代码的玩家，都能实现真正的"创造模式"</strong>。
       </p>
-      <p style="margin-bottom:18px;">通过这个工具，你可以：</p>
-      <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
-        <li>设计全新的 <strong>BOSS</strong> 与挑战机制</li>
-        <li>创造独特的<strong>游戏玩法</strong>与互动系统</li>
-        <li>为建家党打造<strong>自定义元素</strong>与精美贴图</li>
-        <li>实现你脑海中任何疯狂的游戏创意</li>
-      </ul>
-      <p style="margin-bottom:18px;">
+      <p style="margin-bottom:10px;">
         <strong style="color:#C8A84B;">现已支持：</strong>
       </p>
       <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
-        <li>多贴图批量生成（1-4 张变体）</li>
-        <li>逐张独立重生成与替换</li>
-        <li>合成音效实时试听</li>
-        <li>完整 MOD 代码一键打包下载</li>
+        <li>多对象MOD设计（如四种花各有独立设计）</li>
+        <li>每个对象独立贴图生成（1-4张，各对应真实内容）</li>
+        <li>阵营感知音效（影系/月亮系/自然系各有特色）</li>
+        <li>完整Lua代码框架一键生成</li>
+        <li>打包ZIP直接安装</li>
       </ul>
       <p style="text-align:center;margin-top:28px;color:#D4A843;
                 font-style:italic;font-size:1.1rem;letter-spacing:2px;">
@@ -1294,30 +1376,23 @@ def show_producer_message():
 def show_install_guide():
     st.markdown("### 一、下载 MOD")
     st.write("在左侧「MOD 典藏库」中点击「⬇ 下载 MOD 包」，获得 .zip 压缩包。")
-
     st.markdown("### 二、安装步骤")
     st.write("1. **解压**下载的 ZIP 文件")
-    st.write("2. 将解压后的**文件夹**复制到 MOD 目录：")
-    st.code("C:/Users/你的用户名/Documents/Klei/DoNotStarveTogether/mods/",
+    st.write("2. 将文件夹复制到 MOD 目录：")
+    st.code("C:/Users/用户名/Documents/Klei/DoNotStarveTogether/mods/",
             language="")
     st.caption("👆 Windows 路径")
     st.code("Steam/steamapps/common/Don't Starve Together/mods/", language="")
-    st.caption("👆 Steam 安装目录")
-    st.write("3. 启动游戏 → 主菜单 → **「模组」**")
-    st.write("4. 找到你的 MOD → 点击**「启用」**")
-    st.write("5. 创建或进入存档，MOD 即刻生效 ✨")
-
+    st.caption("👆 Steam 路径")
+    st.write("3. 游戏主菜单 → **「模组」** → 找到 MOD → **「启用」**")
+    st.write("4. 创建存档，MOD 即刻生效 ✨")
     st.markdown("### 三、注意事项")
-    st.warning("⚠️ MOD 的 `api_version` 必须为 **10**")
-    st.warning("⚠️ 多人游戏时，**所有玩家**都需安装相同 MOD")
-    st.info("💡 如遇问题，检查游戏日志：")
-    st.code("Documents/Klei/DoNotStarveTogether/client_log.txt", language="")
-
+    st.warning("⚠️ `api_version` 必须为 **10**")
+    st.warning("⚠️ 多人游戏时所有玩家需安装")
     st.markdown("### 四、多贴图说明")
-    st.write("• 第一张贴图自动作为 modicon（图标）")
-    st.write("• 其余贴图存放在 `images/` 目录，可在 Lua 代码中引用")
-    st.write("• 音效文件位于 `sounds/` 目录")
-
+    st.write("• 第一张贴图自动作为 modicon（MOD图标）")
+    st.write("• 其余贴图存放在 `images/` 目录，可在代码中按名称引用")
+    st.write("• 音效为 Web Audio 合成预览，正式发布时建议替换为 .wav 文件")
     st.markdown("---")
     st.markdown(
         "<p style='text-align:center;color:#D4A843;font-style:italic;'>"
@@ -1352,9 +1427,8 @@ def render_home():
         <span class="mode-card-sub">RAPID FORGE</span>
         <hr class="mode-card-divider">
         <p class="mode-card-desc">
-          当你已明晰 Mod 的核心法则与物品灵魂<br>
-          无需徘徊于暗影之间<br>
-          将你的疯狂构想直接锻造成可触及的现实
+          当你已明晰 Mod 的核心法则<br>
+          将你的疯狂构想直接锻造成现实
           <span class="mode-card-en">For when your vision is clear.</span>
         </p>
         <span class="mode-card-hint">点击下方按钮进入 ↓</span>
@@ -1365,9 +1439,8 @@ def render_home():
         <span class="mode-card-sub">SHADOW EXPLORE</span>
         <hr class="mode-card-divider">
         <p class="mode-card-desc">
-          当灵感如迷雾般在你脑海中低语<br>
-          混沌尚未凝聚成形<br>
-          与暗影对话，让疯狂的蓝图逐渐清晰
+          当灵感如迷雾般在脑海低语<br>
+          与暗影对话，让蓝图逐渐清晰
           <span class="mode-card-en">For when inspiration is foggy.</span>
         </p>
         <span class="mode-card-hint">点击下方按钮进入 ↓</span>
@@ -1412,8 +1485,8 @@ def render_home():
     """, unsafe_allow_html=True)
 
     st.markdown("<br><br>", unsafe_allow_html=True)
-    col_left, col_center, col_right = st.columns([1, 2, 1])
-    with col_center:
+    col_l, col_c, col_r = st.columns([1, 2, 1])
+    with col_c:
         if st.button("💭 创作者想说 · FROM PRODUCER",
                      use_container_width=True, key="btn_producer_msg"):
             st.session_state.show_producer_msg = True
@@ -1459,9 +1532,7 @@ with st.sidebar:
             with st.expander(label):
                 st.markdown(f"**{mod['date']}**  ·  `{mod['name']}`")
                 if mod.get("desc"):
-                    desc_text = mod["desc"]
-                    if len(desc_text) > 100:
-                        desc_text = desc_text[:100] + "..."
+                    desc_text = mod["desc"][:100] + ("..." if len(mod["desc"]) > 100 else "")
                     st.caption(desc_text)
 
                 # 显示所有贴图缩略图（最多3张）
@@ -1491,8 +1562,7 @@ with st.sidebar:
                         "messages": [{"role": "user",
                                       "content": mod.get("design", "")}],
                         "sound_audio_cache": {},
-                        "preview_images": [],
-                        "num_images": 1,
+                        "preview_images": [], "num_images": 1,
                         "show_producer_msg": False,
                     })
                     st.rerun()
