@@ -270,6 +270,27 @@ div[data-testid="stButton"]>button:hover {{
     text-align:center; margin-bottom:14px !important; letter-spacing:2px;
 }}
 
+/* ── 贴图限制说明栏 ── */
+.img-limit-notice {{
+    background: rgba(30,18,5,0.85);
+    border: 1px solid #5a3a10;
+    border-left: 3px solid #C8A84B;
+    border-radius: 4px;
+    padding: 10px 16px;
+    margin: 8px 0 14px 0;
+    font-size: 0.80rem !important;
+    color: #A88A58 !important;
+    line-height: 1.7 !important;
+}}
+.img-limit-notice strong {{
+    color: #D4A843 !important;
+    font-size: 0.82rem !important;
+}}
+.img-limit-notice .limit-icon {{
+    font-size: 0.90rem;
+    margin-right: 4px;
+}}
+
 .spec-grid {{
     display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0;
 }}
@@ -363,6 +384,9 @@ hr {{
 # 🔧 工具函数
 # ══════════════════════════════════════════════════════════════
 
+# ── 贴图上限常量（统一管理，方便日后修改）──────────────────
+MAX_IMAGES = 4
+
 def generate_atlas_xml() -> str:
     return '''<?xml version="1.0" encoding="utf-8"?>
 <TextureAtlas imagePath="modicon.tex">
@@ -371,58 +395,118 @@ def generate_atlas_xml() -> str:
 '''
 
 
-def _clean_for_url(text: str, max_words: int = 40) -> str:
-    """清理文本用于 URL：移除中文、截断、清理特殊字符"""
-    text = re.sub(r'[\u4e00-\u9fff]+', '', text)
-    text = re.sub(r'[^\w\s,\-]', ' ', text)
+def _clean_for_url(text: str, max_chars: int = 300) -> str:
+    """
+    清理文本用于 URL：
+    1. 移除所有中文字符
+    2. 只保留英文字母、数字、空格、逗号、连字符
+    3. 按字符数截断（不按词数，更精确控制长度）
+    4. 清理多余空格
+    """
+    # 移除中文
+    text = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u20000-\u2a6df]+', '', text)
+    # 只保留安全字符
+    text = re.sub(r'[^\w\s,\-\.]', ' ', text)
+    # 合并多余空格
     text = re.sub(r'\s+', ' ', text).strip()
-    words = text.split()
-    if len(words) > max_words:
-        text = ' '.join(words[:max_words])
-    return text
+    # 按字符数截断（在词边界截断）
+    if len(text) > max_chars:
+        text = text[:max_chars]
+        # 在最后一个空格处截断，避免截断单词中间
+        last_space = text.rfind(' ')
+        if last_space > max_chars // 2:
+            text = text[:last_space]
+    return text.strip()
+
+
+def _build_safe_image_url(prompt: str, seed: int) -> str:
+    """
+    构建安全的图片 URL：
+    - prompt 严格限制在 250 字符以内（编码前）
+    - negative prompt 固定使用极短版本
+    - 使用 requests.Request 来正确编码，避免手动拼接出错
+    """
+    # 固定短版 negative prompt（约 80 字符）
+    FIXED_NEG = (
+        "realistic photo 3d render anime bright colors "
+        "text watermark blurry modern"
+    )
+
+    # 清理并严格截断 prompt
+    clean = _clean_for_url(prompt, max_chars=250)
+    if len(clean) < 8:
+        clean = (
+            "Don't Starve Together dark gothic item "
+            "hand-drawn sketch muted parchment style"
+        )
+
+    # 手动构建 URL（pollinations 的路径参数需要特殊处理）
+    # 只对空格和逗号编码，保留其他 ASCII 字符
+    enc_prompt = clean.replace(" ", "+").replace(",", "%2C")
+    enc_neg    = FIXED_NEG.replace(" ", "+")
+
+    url = (
+        f"https://image.pollinations.ai/prompt/{enc_prompt}"
+        f"?width=512&height=512"
+        f"&nologo=true"
+        f"&negative={enc_neg}"
+        f"&model=flux"
+        f"&seed={seed % 99999}"
+    )
+    return url
 
 
 def fetch_image(prompt: str, negative: str = "") -> dict:
-    """修复版图片获取：严格控制 URL 长度，移除中文"""
-    try:
-        # 清理 prompt
-        clean_prompt = _clean_for_url(prompt, max_words=45)
-        if not clean_prompt or len(clean_prompt) < 5:
-            clean_prompt = (
-                "Don't Starve Together game art style dark gothic flower item "
-                "hand-drawn sketch muted colors"
-            )
+    """
+    健壮版图片获取：
+    - 严格控制 URL 总长度 ≤ 1500 字符
+    - 最多重试 2 次（换种子）
+    - 详细错误信息
+    """
+    seed = int(datetime.now().timestamp()) % 99999
 
-        # negative 固定使用短版本，避免 URL 过长
-        fixed_negative = (
-            "realistic, 3d render, photographic, bright colors, "
-            "anime, smooth, modern, gradient, text, watermark, blurry"
-        )
+    for attempt in range(2):
+        try:
+            url = _build_safe_image_url(prompt, seed + attempt * 1000)
 
-        enc     = clean_prompt.replace(" ", "%20").replace(",", "%2C")
-        neg_enc = fixed_negative.replace(" ", "%20").replace(",", "%2C")
+            # 安全检查：URL 总长不超过 1500
+            if len(url) > 1500:
+                # 进一步截短 prompt
+                short_prompt = _clean_for_url(prompt, max_chars=150)
+                url = _build_safe_image_url(short_prompt, seed + attempt * 1000)
 
-        seed = int(datetime.now().timestamp()) % 99999
-        url  = (
-            f"https://image.pollinations.ai/prompt/{enc}"
-            f"?width=512&height=512&nologo=true"
-            f"&negative={neg_enc}"
-            f"&model=flux"
-            f"&seed={seed}"
-        )
+            print(f"[DEBUG] 图片请求 URL 长度={len(url)}, attempt={attempt+1}")
+            print(f"[DEBUG] URL: {url[:120]}...")
 
-        r = requests.get(url, timeout=90)
-        if r.status_code == 200 and len(r.content) > 1000:
-            return {
-                "ok":  True,
-                "b64": base64.b64encode(r.content).decode(),
-                "url": url,
-            }
-        return {"ok": False, "err": f"HTTP {r.status_code}"}
-    except requests.Timeout:
-        return {"ok": False, "err": "图片生成超时（>90s），请重试"}
-    except Exception as e:
-        return {"ok": False, "err": str(e)}
+            r = requests.get(url, timeout=90)
+
+            if r.status_code == 200 and len(r.content) > 1000:
+                return {
+                    "ok":  True,
+                    "b64": base64.b64encode(r.content).decode(),
+                    "url": url,
+                }
+            elif r.status_code == 200:
+                # 返回了内容但太小（可能是错误图）
+                print(f"[DEBUG] 响应内容太小: {len(r.content)} bytes")
+                continue
+            else:
+                print(f"[DEBUG] HTTP错误: {r.status_code}")
+                if attempt == 0:
+                    continue  # 重试
+
+        except requests.Timeout:
+            if attempt == 0:
+                print("[DEBUG] 超时，重试中……")
+                continue
+            return {"ok": False, "err": "图片生成超时（>90s），请点击重生成重试"}
+        except Exception as e:
+            print(f"[DEBUG] 异常: {e}")
+            if attempt == 0:
+                continue
+            return {"ok": False, "err": f"生成错误：{str(e)[:60]}"}
+
+    return {"ok": False, "err": "两次尝试均失败，请点击「重生成」重试"}
 
 
 def make_zip(mod: dict) -> bytes:
@@ -435,6 +519,13 @@ def make_zip(mod: dict) -> bytes:
    Steam:   Steam/steamapps/common/Don't Starve Together/mods/
 ③ 游戏主菜单 → 模组 → 找到 MOD → 启用
 ④ api_version 必须为 10，多人游戏所有玩家需安装
+
+【贴图说明】
+• modicon.tex / modicon.xml → MOD 主图标（第1张贴图）
+• images/ 目录 → 其余变体贴图（第2-4张）
+• 本工具最多支持生成 4 张贴图（1张主图标 + 3张变体）
+• 如需更多贴图，可在 images/ 目录手动添加
+
 ══════════════════════════════════════
 CREATED BY DST MOD GENERATOR · PRODUCER · LETITIA
 ══════════════════════════════════════
@@ -484,14 +575,27 @@ def reset_to_home():
 
 
 def _get_image_prompt_for_idx(idx: int) -> str:
-    """获取第 idx 张图对应的 prompt（优先从 all_prompts 读取）"""
+    """
+    获取第 idx 张图对应的 prompt。
+    优先从 all_prompts 读取，并强制截断到安全长度。
+    """
     visual      = st.session_state.visual_result or {}
     all_prompts = visual.get("all_prompts", [])
     if idx < len(all_prompts):
-        return all_prompts[idx].get("prompt", "")
-    # 降级：用基础 prompt 加变体词
-    base = visual.get("optimized_prompt", "")
-    return f"{base}, variant {idx + 1}" if base else ""
+        raw = all_prompts[idx].get("prompt", "")
+    else:
+        # 降级：用基础 prompt 加变体词
+        base = visual.get("optimized_prompt", "")
+        raw  = f"{base} variant {idx + 1}" if base else ""
+
+    # 无论来源，都做清理截断，确保安全
+    cleaned = _clean_for_url(raw, max_chars=220)
+    if not cleaned or len(cleaned) < 8:
+        cleaned = (
+            "Don't Starve Together dark gothic item "
+            "hand-drawn sketch muted parchment style"
+        )
+    return cleaned
 
 
 def _get_image_label_for_idx(idx: int, default: str) -> str:
@@ -504,10 +608,11 @@ def _get_image_label_for_idx(idx: int, default: str) -> str:
 
 
 def _get_negative_prompt() -> str:
-    visual = st.session_state.visual_result or {}
-    return visual.get("negative_prompt",
-                      "realistic, 3d render, photographic, bright colors, "
-                      "anime, smooth, modern, gradient, text, watermark, blurry")
+    """返回极短的固定 negative prompt（不从 visual_result 读取，避免过长）"""
+    return (
+        "realistic photo 3d render anime bright colors "
+        "text watermark blurry modern"
+    )
 
 # ══════════════════════════════════════════════════════════════
 # 🔊 音效合成 HTML
@@ -612,21 +717,15 @@ function playSynth_{safe_id}() {{
 """
 
 # ══════════════════════════════════════════════════════════════
-# 🔊 音效试听组件（重构版）
+# 🔊 音效试听组件
 # ══════════════════════════════════════════════════════════════
 
 def _get_or_generate_sfx(cache_key: str, sfx_data: dict,
                           trigger_type: str = "pickup",
                           duration: str = "short") -> dict:
-    """
-    从缓存获取或生成音效。
-    优先使用 sound_result 里 LLM 直接生成的 synth_params。
-    """
     cache = st.session_state.sound_audio_cache
     if cache_key in cache:
         return cache[cache_key]
-
-    # 优先使用 LLM 生成的 synth_params
     if sfx_data.get("synth_params"):
         result = {
             "ok":           True,
@@ -663,7 +762,6 @@ def render_sound_preview(sound: dict):
 
     cache = st.session_state.sound_audio_cache
 
-    # 阵营颜色映射
     faction_colors = {
         "shadow":  "#9a6aaa",
         "lunar":   "#6aaaca",
@@ -717,7 +815,6 @@ def render_sound_preview(sound: dict):
                     st.session_state.sound_audio_cache[cache_key] = result
                 st.rerun()
 
-    # Ambient
     if ambient.get("needed"):
         amb_desc = ambient.get("description_cn", "")
         amb_key  = "sfx_ambient"
@@ -759,7 +856,6 @@ def render_sound_preview(sound: dict):
                     st.session_state.sound_audio_cache[amb_key] = result
                 st.rerun()
 
-    # 一键生成全部
     all_keys = [f"sfx_{i}" for i in range(len(sfx_list))]
     if ambient.get("needed"):
         all_keys.append("sfx_ambient")
@@ -792,11 +888,30 @@ def render_sound_preview(sound: dict):
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════
-# 🎨 多图预览组件（重构版）
+# 🎨 多图预览组件
 # ══════════════════════════════════════════════════════════════
 
+def _render_image_limit_notice(num_images: int):
+    """渲染贴图数量限制说明"""
+    st.markdown(f"""
+    <div class="img-limit-notice">
+      <span class="limit-icon">📌</span>
+      <strong>贴图生成说明</strong><br>
+      · 本工具最多支持生成 <strong>{MAX_IMAGES} 张</strong>游戏贴图
+      （1 张主图标 + 最多 3 张变体）<br>
+      · 当前已选择生成 <strong>{num_images} 张</strong>，
+        第 1 张将自动用作 MOD 图标（modicon），
+        其余存入 <code>images/</code> 目录<br>
+      · 如需超过 {MAX_IMAGES} 张贴图，请下载 MOD 包后在
+        <code>images/</code> 目录手动添加<br>
+      · 图片由 <em>Pollinations AI</em> 生成，网络波动可能导致失败，
+        可点击「🔄 重生成」单独重试
+    </div>
+    """, unsafe_allow_html=True)
+
+
 def render_image_gallery(visual: dict, spec: dict):
-    """渲染多图预览区，每张图对应一个对象"""
+    """渲染多图预览区"""
     images  = st.session_state.preview_images
     n       = len(images)
     obj     = spec.get("main_object", {})
@@ -814,8 +929,11 @@ def render_image_gallery(visual: dict, spec: dict):
         st.markdown('</div>', unsafe_allow_html=True)
         return
 
-    # 每行最多 3 列
-    cols_per_row = min(n, 3)
+    # 贴图限制说明
+    _render_image_limit_notice(n)
+
+    # 每行最多 2 列（避免过窄）
+    cols_per_row = min(n, 2)
     rows = [images[i:i + cols_per_row]
             for i in range(0, n, cols_per_row)]
 
@@ -823,69 +941,96 @@ def render_image_gallery(visual: dict, spec: dict):
         cols = st.columns(len(row_imgs))
         for col, img_data in zip(cols, row_imgs):
             global_idx = images.index(img_data)
+            is_icon    = (global_idx == 0)
             with col:
                 st.markdown('<div class="img-card">', unsafe_allow_html=True)
+
+                # 图标标识
+                if is_icon:
+                    st.markdown(
+                        '<span style="display:block;text-align:center;'
+                        'font-size:0.65rem;color:#C8A84B;letter-spacing:2px;'
+                        'margin-bottom:4px;">★ MOD ICON</span>',
+                        unsafe_allow_html=True)
+
                 if img_data.get("url"):
                     st.image(img_data["url"], use_container_width=True)
                     label = img_data.get("label", name_cn)
                     st.markdown(
-                        f'<span class="img-card-label">{label}</span>',
+                        f'<span class="img-card-label">#{global_idx+1} {label}</span>',
                         unsafe_allow_html=True)
+                    if img_data.get("err"):
+                        st.markdown(
+                            f'<span style="color:#9a5a4a;font-size:0.70rem;">'
+                            f'⚠ {img_data["err"]}</span>',
+                            unsafe_allow_html=True)
                 else:
+                    err_msg = img_data.get("err", "生成失败")
                     st.markdown(
-                        '<p style="color:#6a3820;text-align:center;'
-                        'font-style:italic;padding:20px 0;font-size:0.8rem;">'
-                        '生成失败，请重试</p>',
+                        f'<p style="color:#6a3820;text-align:center;'
+                        f'font-style:italic;padding:20px 0;font-size:0.8rem;">'
+                        f'#{global_idx+1} 生成失败<br>'
+                        f'<span style="font-size:0.70rem;color:#4a2818;">'
+                        f'{err_msg}</span></p>',
                         unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
                 if st.button(f"🔄 重生成 #{global_idx+1}",
                              key=f"regen_img_{global_idx}",
                              use_container_width=True):
-                    with st.spinner(
-                            f"✦ 重新召唤「{img_data.get('label','')}」……"):
-                        prompt = _get_image_prompt_for_idx(global_idx)
-                        neg    = _get_negative_prompt()
-                        new_img = fetch_image(prompt, neg)
+                    lbl = img_data.get("label", name_cn)
+                    with st.spinner(f"✦ 重新召唤「{lbl}」……"):
+                        prompt  = _get_image_prompt_for_idx(global_idx)
+                        new_img = fetch_image(prompt)
                         if new_img["ok"]:
                             st.session_state.preview_images[global_idx] = {
                                 "url":   new_img["url"],
                                 "b64":   new_img["b64"],
-                                "label": img_data.get("label", name_cn),
+                                "label": lbl,
+                                "err":   "",
                             }
                         else:
+                            st.session_state.preview_images[global_idx]["err"] = (
+                                new_img["err"])
                             st.warning(f"生成失败：{new_img['err']}")
                     st.rerun()
 
-    # 提示词预览
+    # 提示词预览（折叠）
     all_prompts = visual.get("all_prompts", [])
     if all_prompts:
-        with st.expander("查看绘图 Prompt", expanded=False):
+        with st.expander("🔍 查看绘图 Prompt（调试用）", expanded=False):
             for i, ap in enumerate(all_prompts[:n]):
+                raw_p   = ap.get("prompt", "")
+                clean_p = _clean_for_url(raw_p, max_chars=220)
                 st.markdown(
                     f'<p style="font-size:0.68rem;color:#4a3820;'
                     f'font-style:italic;margin:2px 0;">'
-                    f'#{i+1} {ap.get("label","")}: '
-                    f'{ap.get("prompt","")[:80]}…</p>',
+                    f'<strong style="color:#7a5a28;">#{i+1} {ap.get("label","")}</strong>'
+                    f'（{len(clean_p)}字符）: {clean_p[:100]}…</p>',
                     unsafe_allow_html=True)
 
     # 一键重生成全部
     if st.button("🔄 重新生成全部图片",
                  key="regen_all_imgs", use_container_width=True):
         with st.spinner(f"✦ 重新召唤全部 {n} 张图腾……"):
-            neg        = _get_negative_prompt()
             new_images = []
             for idx in range(n):
                 prompt = _get_image_prompt_for_idx(idx)
                 label  = (images[idx].get("label", name_cn)
                           if idx < len(images) else name_cn)
-                img = fetch_image(prompt, neg)
+                img = fetch_image(prompt)
                 new_images.append({
                     "url":   img["url"] if img["ok"] else None,
                     "b64":   img["b64"] if img["ok"] else None,
                     "label": label,
+                    "err":   img.get("err", "") if not img["ok"] else "",
                 })
             st.session_state.preview_images = new_images
+
+        failed = [i + 1 for i, im in enumerate(new_images)
+                  if not im.get("url")]
+        if failed:
+            st.warning(f"⚠️ 第 {failed} 张生成失败，可点击「🔄 重生成」单独重试")
         st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
@@ -938,7 +1083,6 @@ def render_preview_stage():
     </div>
     """, unsafe_allow_html=True)
 
-    # 子对象列表
     subs = spec.get("sub_objects", [])
     if subs:
         sub_html = "".join(
@@ -976,74 +1120,109 @@ def render_preview_stage():
 
     # ── 贴图数量选择（图片未生成时显示）──────────────────
     if not st.session_state.preview_images:
-        # 从 all_prompts 推断推荐数量
         all_prompts     = visual.get("all_prompts", [])
-        suggested_count = max(1, min(len(all_prompts), 4)) if all_prompts else 1
+        suggested_count = max(1, min(len(all_prompts), MAX_IMAGES)) if all_prompts else 1
+        sub_count       = len(spec.get("sub_objects", []))
 
         st.markdown("""
-        <p style="text-align:center;font-size:0.86rem;color:#7a6040;
-                  margin-bottom:6px;letter-spacing:1px;">
+        <p style="text-align:center;font-size:0.92rem;color:#C8A84B;
+                  margin-bottom:4px;letter-spacing:1px;font-weight:600;">
           ✦ 选择需要生成的贴图数量
         </p>
         """, unsafe_allow_html=True)
 
+        # 贴图限制说明（选择前展示）
+        st.markdown(f"""
+        <div class="img-limit-notice">
+          <span class="limit-icon">📌</span>
+          <strong>贴图生成限制说明</strong><br>
+          · 本工具最多支持生成 <strong>{MAX_IMAGES} 张</strong>游戏贴图<br>
+          · <strong>第 1 张</strong>自动作为 MOD 图标（modicon.tex），
+            显示在游戏模组列表中<br>
+          · <strong>第 2–{MAX_IMAGES} 张</strong>作为变体贴图，
+            存入 MOD 包的 <code>images/</code> 目录<br>
+          · 如需超过 {MAX_IMAGES} 张贴图，下载 MOD 包后可手动在
+            <code>images/</code> 目录中添加<br>
+          · 图片生成由 <em>Pollinations AI</em> 提供，网络波动可能导致个别张失败，
+            可单独点击「🔄 重生成」重试
+        </div>
+        """, unsafe_allow_html=True)
+
         col_n1, col_n2, col_n3 = st.columns([1, 2, 1])
         with col_n2:
-            if suggested_count > 1:
+            # 推荐数量提示
+            if suggested_count > 1 or sub_count > 0:
+                actual_suggest = max(suggested_count,
+                                     min(sub_count + 1, MAX_IMAGES))
                 st.markdown(
                     f'<p style="text-align:center;font-size:0.78rem;'
                     f'color:#7a5a28;margin-bottom:4px;">'
-                    f'✦ 检测到 {suggested_count} 种对象，推荐生成 {suggested_count} 张</p>',
+                    f'✦ 检测到 {max(sub_count, suggested_count - 1)} 种变体对象，'
+                    f'推荐生成 <strong style="color:#C8A84B;">'
+                    f'{actual_suggest}</strong> 张</p>',
                     unsafe_allow_html=True)
+            else:
+                actual_suggest = 1
+
             num = st.select_slider(
                 "贴图数量",
-                options=[1, 2, 3, 4],
-                value=min(suggested_count, 4),
+                options=list(range(1, MAX_IMAGES + 1)),
+                value=min(actual_suggest, MAX_IMAGES),
                 key="num_images_slider",
                 label_visibility="collapsed",
             )
             st.session_state.num_images = num
+
+            # 动态说明
+            slot_desc = "（仅主图标）" if num == 1 else f"（1 张主图标 + {num-1} 张变体）"
             st.markdown(
-                f'<p style="text-align:center;font-size:0.78rem;'
-                f'color:#5a4020;margin-top:4px;">将生成 {num} 张贴图</p>',
+                f'<p style="text-align:center;font-size:0.80rem;'
+                f'color:#9a7a48;margin-top:4px;">'
+                f'将生成 <strong style="color:#D4A843;">{num}</strong> 张贴图 '
+                f'{slot_desc}</p>',
                 unsafe_allow_html=True)
 
         col_g1, col_g2, col_g3 = st.columns([1, 2, 1])
         with col_g2:
+            st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
             if st.button("✦ 生成贴图预览",
                          key="gen_imgs_btn", use_container_width=True):
-                neg        = _get_negative_prompt()
-                name_cn    = obj.get("name_cn", "MOD图标")
                 new_images = []
                 prog = st.progress(0)
+                failed_list = []
+
                 for idx in range(num):
-                    label  = _get_image_label_for_idx(idx, name_cn)
+                    label  = _get_image_label_for_idx(idx, obj.get("name_cn", "MOD图标"))
                     prompt = _get_image_prompt_for_idx(idx)
                     if not prompt:
                         prompt = (
-                            "Don't Starve Together game art style "
-                            "Tim Burton gothic cartoon dark flower item "
-                            "hand-drawn sketch muted colors parchment"
+                            "Don't Starve Together dark gothic item "
+                            "hand-drawn sketch muted parchment style"
                         )
-                    with st.spinner(f"✦ 生成「{label}」({idx+1}/{num})……"):
-                        img = fetch_image(prompt, neg)
-                        new_images.append({
+
+                    with st.spinner(
+                            f"✦ 生成第 {idx+1}/{num} 张「{label}」……"):
+                        img = fetch_image(prompt)
+                        entry = {
                             "url":   img["url"] if img["ok"] else None,
                             "b64":   img["b64"] if img["ok"] else None,
                             "label": label,
                             "err":   img.get("err", "") if not img["ok"] else "",
-                        })
+                        }
+                        new_images.append(entry)
+                        if not img["ok"]:
+                            failed_list.append(idx + 1)
+
                     prog.progress((idx + 1) / num)
 
                 st.session_state.preview_images = new_images
-                # 检查是否有失败的
-                failed = [i for i, im in enumerate(new_images)
-                          if not im.get("url")]
-                if failed:
+
+                if failed_list:
                     st.warning(
-                        f"⚠️ 第 {[f+1 for f in failed]} 张生成失败，"
-                        f"可点击「重生成」重试")
+                        f"⚠️ 第 {failed_list} 张生成失败，"
+                        f"可在预览区点击「🔄 重生成」单独重试")
                 st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -1213,17 +1392,18 @@ def _enter_preview():
         visual = optimize_visual_prompt(spec)
         st.session_state.visual_result = visual
 
-        # 打印调试信息（部署时可删除）
         all_prompts = visual.get("all_prompts", [])
         print(f"[DEBUG] 生成 {len(all_prompts)} 条图片 prompt：")
         for i, ap in enumerate(all_prompts):
-            print(f"  #{i+1} [{ap.get('label','')}]: {ap.get('prompt','')[:80]}")
+            raw   = ap.get("prompt", "")
+            clean = _clean_for_url(raw, max_chars=220)
+            print(f"  #{i+1} [{ap.get('label','')}] 原始={len(raw)}字符 "
+                  f"清理后={len(clean)}字符: {clean[:80]}")
 
     with st.spinner("✦ 编排音效方案……"):
         sound = generate_sound_prompts(spec)
         st.session_state.sound_result = sound
 
-        # 打印调试信息（部署时可删除）
         sfx_list = sound.get("sound_effects", [])
         print(f"[DEBUG] 生成 {len(sfx_list)} 条音效：")
         for sfx in sfx_list:
@@ -1353,10 +1533,19 @@ def show_producer_message():
       </p>
       <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
         <li>多对象MOD设计（如四种花各有独立设计）</li>
-        <li>每个对象独立贴图生成（1-4张，各对应真实内容）</li>
+        <li>每个对象独立贴图生成（1–4张，各对应真实内容）</li>
         <li>阵营感知音效（影系/月亮系/自然系各有特色）</li>
         <li>完整Lua代码框架一键生成</li>
         <li>打包ZIP直接安装</li>
+      </ul>
+      <p style="margin-bottom:10px;">
+        <strong style="color:#C8A84B;">贴图生成说明：</strong>
+      </p>
+      <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
+        <li>最多支持生成 <strong>4 张</strong>贴图（当前工具上限）</li>
+        <li>第 1 张自动作为 MOD 图标，其余存入 images/ 目录</li>
+        <li>如 AI 生成失败，可点击「🔄 重生成」单独重试</li>
+        <li>如需更多贴图，下载 MOD 包后手动在 images/ 目录添加</li>
       </ul>
       <p style="text-align:center;margin-top:28px;color:#D4A843;
                 font-style:italic;font-size:1.1rem;letter-spacing:2px;">
@@ -1389,9 +1578,12 @@ def show_install_guide():
     st.markdown("### 三、注意事项")
     st.warning("⚠️ `api_version` 必须为 **10**")
     st.warning("⚠️ 多人游戏时所有玩家需安装")
-    st.markdown("### 四、多贴图说明")
-    st.write("• 第一张贴图自动作为 modicon（MOD图标）")
-    st.write("• 其余贴图存放在 `images/` 目录，可在代码中按名称引用")
+    st.markdown("### 四、贴图说明")
+    st.info(f"📌 本工具最多生成 **{MAX_IMAGES} 张**贴图（1 张主图标 + 最多 3 张变体）")
+    st.write("• 第一张贴图自动作为 `modicon`（MOD图标）")
+    st.write(f"• 第 2–{MAX_IMAGES} 张存放在 `images/` 目录，可在代码中按名称引用")
+    st.write(f"• 如需超过 {MAX_IMAGES} 张，下载后在 `images/` 目录手动添加即可")
+    st.markdown("### 五、音效说明")
     st.write("• 音效为 Web Audio 合成预览，正式发布时建议替换为 .wav 文件")
     st.markdown("---")
     st.markdown(
@@ -1535,7 +1727,6 @@ with st.sidebar:
                     desc_text = mod["desc"][:100] + ("..." if len(mod["desc"]) > 100 else "")
                     st.caption(desc_text)
 
-                # 显示所有贴图缩略图（最多3张）
                 all_imgs = mod.get("all_images", [])
                 if all_imgs:
                     thumb_cols = st.columns(min(len(all_imgs), 3))
@@ -1544,6 +1735,13 @@ with st.sidebar:
                             st.image(img_url, use_container_width=True)
                 elif mod.get("image_url"):
                     st.image(mod["image_url"], width=110)
+
+                # 贴图数量提示
+                img_count = len(all_imgs)
+                if img_count > 0:
+                    st.caption(
+                        f"📌 包含 {img_count} 张贴图"
+                        f"{'（已达上限）' if img_count >= MAX_IMAGES else ''}")
 
                 z = make_zip(mod)
                 st.download_button(
