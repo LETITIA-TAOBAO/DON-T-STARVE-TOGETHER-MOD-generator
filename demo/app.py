@@ -105,7 +105,8 @@ if st.session_state.mode == "home":
     }
     """
 
-st.markdown(f"""
+# 构建完整的CSS
+css_content = f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English+SC:ital@0;1&display=swap');
@@ -418,3 +419,14 @@ div[data-testid="stButton"]>button:hover {{
 .preview-box-title {{
     font-family:'Cinzel Decorative',serif !important;
     font-size:1.05rem !important;
+    color:#D4A843 !important;
+    text-align:center;
+    margin-bottom:14px !important;
+    letter-spacing:2px;
+}}
+
+.spec-grid {{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin:10px
