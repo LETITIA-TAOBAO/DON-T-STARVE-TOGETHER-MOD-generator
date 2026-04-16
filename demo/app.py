@@ -40,6 +40,8 @@ for key, val in {
     "stage":              "chat",
     "generating":         False,
     "sound_audio_cache":  {},
+    "show_producer_msg":  False,
+    "show_install_guide": False,
 }.items():
     if key not in st.session_state:
         st.session_state[key] = val
@@ -304,6 +306,10 @@ audio {{
     background:rgba(20,11,3,0.74) !important;
     border:1px solid #4a3010 !important; border-radius:4px !important;
 }}
+.st-expander [data-testid="stMarkdownContainer"] p {{
+    margin: 4px 0 !important;
+    line-height: 1.5 !important;
+}}
 hr {{
     border:none !important;
     border-top:1px solid rgba(139,100,32,0.28) !important;
@@ -313,34 +319,118 @@ hr {{
 ::-webkit-scrollbar-track {{ background:rgba(10,5,0,0.3); }}
 ::-webkit-scrollbar-thumb {{ background:#5a3810; border-radius:3px; }}
 
-/* ── 创作者信息水印 ── */
+/* ── 创作者信息水印（更明显） ── */
 .creator-tag {{
     position: fixed;
-    bottom: 18px;
-    right: 22px;
+    bottom: 16px;
+    right: 20px;
     z-index: 9999;
     text-align: right;
     pointer-events: auto;
-    opacity: 0.55;
+    opacity: 0.75;
     transition: opacity 0.3s ease;
+    background: rgba(12,6,1,0.85);
+    border: 1px solid rgba(139,100,32,0.4);
+    border-radius: 4px;
+    padding: 10px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.6);
 }}
 .creator-tag:hover {{
     opacity: 1.0;
+    border-color: rgba(200,168,75,0.6);
 }}
 .creator-tag p {{
     font-family: 'Cinzel', serif !important;
-    font-size: 0.62rem !important;
-    color: #8B6420 !important;
+    font-size: 0.72rem !important;
+    color: #C8A868 !important;
     letter-spacing: 2px !important;
-    margin: 2px 0 !important;
+    margin: 3px 0 !important;
     line-height: 1.6 !important;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.9) !important;
 }}
 .creator-tag .creator-divider {{
     border: none;
     border-top: 1px solid rgba(139,100,32,0.35);
-    margin: 4px 0;
+    margin: 6px 0;
     width: 100%;
+}}
+.creator-link {{
+    cursor: pointer;
+    color: #D4A843 !important;
+    text-decoration: none;
+    transition: color 0.2s;
+    display: inline-block;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+}}
+.creator-link:hover {{
+    color: #FFD700 !important;
+    border-color: rgba(200,168,75,0.4);
+    background: rgba(200,168,75,0.1);
+}}
+
+/* ── 弹窗样式 ── */
+.modal-overlay {{
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.3s ease;
+}}
+.modal-content {{
+    background: rgba(15,8,2,0.95);
+    border: 2px solid #C8A84B;
+    border-radius: 8px;
+    padding: 32px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.8), inset 0 0 30px rgba(0,0,0,0.4);
+    position: relative;
+}}
+.modal-title {{
+    font-family: 'Cinzel Decorative', serif !important;
+    font-size: 1.5rem !important;
+    color: #D4A843 !important;
+    text-align: center;
+    margin-bottom: 20px !important;
+    letter-spacing: 3px;
+    text-shadow: 0 0 20px rgba(200,160,60,0.4);
+}}
+.modal-body {{
+    font-family: 'IM Fell English SC', serif !important;
+    font-size: 0.95rem !important;
+    line-height: 1.9 !important;
+    color: #D4BC88 !important;
+    text-align: justify;
+}}
+.modal-close {{
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: #7a5a28;
+    font-size: 1.8rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    line-height: 1;
+}}
+.modal-close:hover {{
+    color: #C8A84B;
+}}
+@keyframes fadeIn {{
+    from {{ opacity: 0; }}
+    to {{ opacity: 1; }}
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -403,7 +493,7 @@ def make_zip(mod: dict) -> bytes:
 ③ 启动游戏 → 主菜单 → 模组
    找到本 Mod → 点击启用
 
-④ 创建或进入存档，Mod 即刻生效
+④ 创建或进入存档,Mod 即刻生效
 
 ⚠️ 注意：
   - api_version 必须为 10
@@ -1007,20 +1097,20 @@ def render_chat_stage(mode: str):
         st.markdown("""
         <div class="mode-header">
           <h3 style="color:#4CAF50 !important;">👁 迷雾探路者 · Shadow Explore</h3>
-          <p>与永恒大陆的使者充分对话，明确设计后点击「预览并确认」</p>
+          <p>与永恒大陆的使者充分对话,明确设计后点击「预览并确认」</p>
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
         <div class="mode-header">
           <h3 style="color:#D4A843 !important;">⚡ 意志铸剑者 · Rapid Forge</h3>
-          <p>输入你的构想，永恒大陆的使者将细化设计，确认后点击「预览并确认」</p>
+          <p>输入你的构想,永恒大陆的使者将细化设计,确认后点击「预览并确认」</p>
         </div>
         """, unsafe_allow_html=True)
 
     render_chat(st.session_state.messages)
 
-    placeholder = ("低语你的构想，永恒大陆的使者将倾听……"
+    placeholder = ("低语你的构想,永恒大陆的使者将倾听……"
                    if is_explore else "将你的意志化为文字……")
     user_inp = st.chat_input(placeholder)
 
@@ -1073,7 +1163,7 @@ def render_done_stage():
       <hr class="banner-divider">
       <p class="banner-quote">
         {spec.get("mod_name_cn","你的 MOD")} · {spec.get("mod_name_en","")}<br>
-        <em>混沌已凝固，你的疯狂已成为现实。</em>
+        <em>混沌已凝固,你的疯狂已成为现实。</em>
       </p>
     </div>
     """, unsafe_allow_html=True)
@@ -1106,7 +1196,7 @@ def render_home():
       <p class="banner-sub">DON'T STARVE TOGETHER · MOD GENERATOR</p>
       <hr class="banner-divider">
       <p class="banner-quote">
-        当理智归零，现实崩塌。<br>
+        当理智归零,现实崩塌。<br>
         <em>You are no longer a survivor — but a Creator.</em>
       </p>
     </div>
@@ -1135,7 +1225,7 @@ def render_home():
         <p class="mode-card-desc">
           当灵感如迷雾般在你脑海中低语<br>
           混沌尚未凝聚成形<br>
-          与暗影对话，让疯狂的蓝图逐渐清晰
+          与暗影对话,让疯狂的蓝图逐渐清晰
           <span class="mode-card-en">For when inspiration is foggy.</span>
         </p>
         <span class="mode-card-hint">点击下方按钮进入 ↓</span>
@@ -1204,9 +1294,9 @@ with st.sidebar:
         for mod in reversed(st.session_state.generated_mods):
             label = f"📜 {mod.get('name_cn') or mod['name']}"
             with st.expander(label):
-                st.caption(f"{mod['date']}  ·  {mod['name']}")
+                st.markdown(f"**{mod['date']}**  ·  `{mod['name']}`")
                 if mod.get("desc"):
-                    st.caption(mod["desc"])
+                    st.caption(mod["desc"][:100] + "..." if len(mod.get("desc", "")) > 100 else mod.get("desc", ""))
                 if mod.get("image_url"):
                     st.image(mod["image_url"], width=110)
                 z = make_zip(mod)
@@ -1230,6 +1320,13 @@ with st.sidebar:
                     st.rerun()
 
     st.divider()
+    
+    # 📖 MOD 安装教程按钮
+    if st.button("📖 MOD 安装教程", use_container_width=True):
+        st.session_state.show_install_guide = True
+        st.rerun()
+    
+    st.divider()
     st.caption(f"本次对话：{len(st.session_state.messages)} 条")
     st.caption(f"已生成 Mod：{len(st.session_state.generated_mods)} 个")
     st.divider()
@@ -1240,13 +1337,167 @@ with st.sidebar:
 
 
 # ══════════════════════════════════════════════════════════════
-# 🖋 创作者信息（右下角固定，全页面常驻）
+# 🖋 创作者信息（右下角固定,全页面常驻）+ 弹窗
 # ══════════════════════════════════════════════════════════════
 
-st.markdown("""
+# 创作者想说弹窗
+if st.session_state.show_producer_msg:
+    st.markdown("""
+    <div class="modal-overlay" onclick="this.style.display='none'">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="this.parentElement.parentElement.style.display='none'">×</button>
+            <h2 class="modal-title">✦ 创作者想说 ✦</h2>
+            <div class="modal-body">
+                <p style="margin-bottom:16px;">
+                    这个 MOD 生成器诞生于对<strong>《饥荒联机版》</strong>的热爱，以及对<strong>创造自由</strong>的向往。
+                </p>
+                <p style="margin-bottom:16px;">
+                    它的核心使命是：<strong>让每一位想在游戏世界中自由创造、但不会编写代码的玩家，
+                    都能实现真正的"创造模式"</strong>。
+                </p>
+                <p style="margin-bottom:16px;">
+                    通过这个工具，你可以：
+                </p>
+                <ul style="margin-left:24px;margin-bottom:16px;line-height:1.9;">
+                    <li>设计全新的 <strong>BOSS</strong> 与挑战机制</li>
+                    <li>创造独特的<strong>游戏玩法</strong>与互动系统</li>
+                    <li>为建家党打造<strong>自定义元素</strong>与精美贴图</li>
+                    <li>实现你脑海中任何疯狂的游戏创意</li>
+                </ul>
+                <p style="margin-bottom:16px;font-style:italic;color:#7a5a28;">
+                    ⚠️ 当前版本限制：一轮对话只能创建一个贴图，但我们正在持续升级中……
+                </p>
+                <p style="margin-bottom:16px;">
+                    未来我们将支持：
+                </p>
+                <ul style="margin-left:24px;margin-bottom:16px;line-height:1.9;">
+                    <li>多贴图批量生成</li>
+                    <li>动画序列帧自动合成</li>
+                    <li>更复杂的游戏逻辑编排</li>
+                    <li>可视化 MOD 配置面板</li>
+                </ul>
+                <p style="text-align:center;margin-top:24px;color:#C8A84B;font-style:italic;">
+                    ✦ 愿你的创造力在永恒大陆中永不熄灭 ✦
+                </p>
+            </div>
+        </div>
+    </div>
+    <script>
+        setTimeout(() => {
+            const modal = document.querySelector('.modal-overlay');
+            if (modal) modal.style.display = 'flex';
+        }, 100);
+    </script>
+    """, unsafe_allow_html=True)
+    
+    # 重置状态（防止持续显示）
+    if st.button("关闭", key="close_producer_modal"):
+        st.session_state.show_producer_msg = False
+        st.rerun()
+
+# MOD 安装教程弹窗
+if st.session_state.show_install_guide:
+    st.markdown("""
+    <div class="modal-overlay" onclick="this.style.display='none'">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="this.parentElement.parentElement.style.display='none'">×</button>
+            <h2 class="modal-title">📖 MOD 安装 & 使用教程</h2>
+            <div class="modal-body">
+                <h3 style="color:#D4A843;margin:20px 0 12px 0;font-size:1.2rem;">一、下载 MOD</h3>
+                <p>在左侧「MOD 典藏库」中点击<strong>「⬇ 下载 MOD 包」</strong>，获得 <code>.zip</code> 压缩包。</p>
+                
+                <h3 style="color:#D4A843;margin:20px 0 12px 0;font-size:1.2rem;">二、安装步骤</h3>
+                <ol style="margin-left:24px;line-height:1.9;">
+                    <li><strong>解压</strong>下载的 ZIP 文件</li>
+                    <li>将解压后的<strong>文件夹</strong>（非 ZIP 文件）复制到 MOD 目录：
+                        <ul style="margin-left:20px;margin-top:8px;">
+                            <li><strong>Windows:</strong><br>
+                                <code style="background:rgba(200,168,75,0.1);padding:2px 6px;border-radius:3px;">
+                                C:/Users/你的用户名/Documents/Klei/DoNotStarveTogether/mods/
+                                </code>
+                            </li>
+                            <li style="margin-top:8px;"><strong>Steam 安装目录:</strong><br>
+                                <code style="background:rgba(200,168,75,0.1);padding:2px 6px;border-radius:3px;">
+                                Steam/steamapps/common/Don't Starve Together/mods/
+                                </code>
+                            </li>
+                        </ul>
+                    </li>
+                    <li>启动游戏 → 主菜单 → <strong>「模组」</strong></li>
+                    <li>在列表中找到你的 MOD → 点击<strong>「启用」</strong></li>
+                    <li>创建或进入存档，MOD 即刻生效 ✨</li>
+                </ol>
+                
+                <h3 style="color:#D4A843;margin:20px 0 12px 0;font-size:1.2rem;">三、注意事项</h3>
+                <ul style="margin-left:24px;line-height:1.9;">
+                    <li>⚠️ MOD 的 <code>api_version</code> 必须为 <strong>10</strong></li>
+                    <li>⚠️ 多人游戏时，<strong>所有玩家</strong>都需安装相同 MOD</li>
+                    <li>💡 如遇问题，检查游戏日志文件：<br>
+                        <code style="background:rgba(200,168,75,0.1);padding:2px 6px;border-radius:3px;">
+                        Documents/Klei/DoNotStarveTogether/client_log.txt
+                        </code>
+                    </li>
+                </ul>
+                
+                <h3 style="color:#D4A843;margin:20px 0 12px 0;font-size:1.2rem;">四、进阶使用</h3>
+                <p>• 音效文件已自动打包到 <code>sounds/</code> 目录<br>
+                   • 贴图文件位于 <code>images/</code> 目录<br>
+                   • 可手动编辑 <code>modmain.lua</code> 自定义功能</p>
+                
+                <p style="text-align:center;margin-top:24px;color:#C8A84B;font-style:italic;">
+                    ✦ 祝你在永恒大陆玩得愉快 ✦
+                </p>
+            </div>
+        </div>
+    </div>
+    <script>
+        setTimeout(() => {
+            const modal = document.querySelector('.modal-overlay');
+            if (modal) modal.style.display = 'flex';
+        }, 100);
+    </script>
+    """, unsafe_allow_html=True)
+    
+    if st.button("关闭", key="close_install_modal"):
+        st.session_state.show_install_guide = False
+        st.rerun()
+
+# 创作者信息标签
+creator_html = f"""
 <div class="creator-tag">
-    <p>✦ PRODUCER · LETITIA ✦</p>
+    <p style="font-weight:600;">✦ PRODUCER · LETITIA ✦</p>
     <hr class="creator-divider">
     <p>1135462669@qq.com</p>
+    <hr class="creator-divider">
+    <a class="creator-link" onclick="window.parent.postMessage({{type:'show_producer_msg'}}, '*')">
+        创作者想说 · FROM PRODUCER
+    </a>
 </div>
-""", unsafe_allow_html=True)
+<script>
+window.addEventListener('message', function(e) {{
+    if (e.data.type === 'show_producer_msg') {{
+        window.parent.postMessage({{streamlit: 'setComponentValue', value: true}}, '*');
+    }}
+}}, false);
+</script>
+"""
+
+st.components.v1.html(f"""
+{creator_html}
+<script>
+document.querySelector('.creator-link').addEventListener('click', function() {{
+    window.parent.postMessage({{
+        isStreamlitMessage: true,
+        type: "streamlit:setComponentValue",
+        key: "show_producer_msg_trigger",
+        value: true
+    }}, "*");
+}});
+</script>
+""", height=0)
+
+# 监听点击事件
+if st.session_state.get("show_producer_msg_trigger"):
+    st.session_state.show_producer_msg = True
+    st.session_state.show_producer_msg_trigger = False
+    st.rerun()
