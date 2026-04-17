@@ -5,12 +5,12 @@ import re
 import zipfile
 import requests
 import base64
+import urllib.parse  # 🔧 新增：用于安全 URL 编码
 from datetime import datetime
 
 # ══════════════════════════════════════════════════════════════
 # ⚠️ LLM 导入
 # ══════════════════════════════════════════════════════════════
-
 try:
     from qwen_client import (
         explore_with_llm,
@@ -20,13 +20,11 @@ try:
         optimize_visual_prompt,
         generate_sound_prompts,
         generate_sound_effect,
-        fetch_image,          # ← 加上这行
         DST_NEGATIVE,
     )
 except ImportError as e:
     st.error(f"❌ 永恒大陆加载失败：{e}")
     st.stop()
-    
 
 # ══════════════════════════════════════════════════════════════
 # 🔧 Session State
@@ -61,7 +59,7 @@ BASE_URL = (
 BG_URL = BASE_URL + "background.jpg.png"
 
 # ══════════════════════════════════════════════════════════════
-# 🎨 CSS（修复文字溢出版）
+# 🎨 CSS
 # ══════════════════════════════════════════════════════════════
 _creator_tag_css = ""
 if st.session_state.mode == "home":
@@ -73,8 +71,6 @@ if st.session_state.mode == "home":
         border: 2px solid rgba(139,100,32,0.5); border-radius: 6px;
         padding: 14px 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.7);
         opacity: 0.85; transition: all 0.3s ease;
-        word-wrap: break-word; overflow-wrap: break-word;
-        max-width: 280px;
     }
     .creator-tag:hover {
         opacity: 1.0; border-color: rgba(200,168,75,0.75);
@@ -102,14 +98,6 @@ st.markdown(f"""
 @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English+SC:ital@0;1&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&display=swap');
 
-/* ═══ 全局文字溢出保护 ═══ */
-* {{
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    hyphens: auto !important;
-    box-sizing: border-box !important;
-}}
-
 .stApp {{
     background-image: url("{BG_URL}");
     background-size: cover; background-position: center;
@@ -121,8 +109,6 @@ st.markdown(f"""
 }}
 .stAppViewContainer .stMainBlockContainer, .block-container {{
     background:rgba(20,11,3,0.55) !important; backdrop-filter:blur(2px);
-    max-width:100% !important;
-    overflow-x:hidden !important;
 }}
 html,[class*="css"] {{ background-color:transparent !important; }}
 
@@ -130,14 +116,9 @@ section[data-testid="stSidebar"] {{
     background:rgba(15,8,2,0.72) !important;
     border-right:2px solid rgba(160,100,30,0.35) !important;
     backdrop-filter:blur(4px);
-    overflow-x:hidden !important;
 }}
 section[data-testid="stSidebar"]>div {{ background:transparent !important; }}
-section[data-testid="stSidebar"] * {{
-    color:#C8A868 !important;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-}}
+section[data-testid="stSidebar"] * {{ color:#C8A868 !important; }}
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3 {{ color:#D4A843 !important; }}
@@ -146,13 +127,9 @@ h1,h2,h3 {{
     font-family:'Cinzel Decorative',serif !important; color:#D4A843 !important;
     text-shadow:0 0 20px rgba(200,160,60,0.4),2px 2px 4px rgba(0,0,0,0.8) !important;
     letter-spacing:2px !important;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
 }}
 p,span,div,label,li {{
     font-family:'IM Fell English SC',serif !important; color:#EDD9A3 !important;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
 }}
 
 .dst-banner {{
@@ -162,9 +139,6 @@ p,span,div,label,li {{
     text-align:center; margin:10px auto 28px; max-width:820px;
     box-shadow:0 0 60px rgba(0,0,0,0.7),inset 0 0 30px rgba(0,0,0,0.4);
     position:relative;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    overflow-x:hidden !important;
 }}
 .dst-banner::before,.dst-banner::after {{
     content:"✦"; position:absolute; top:12px; color:#7B5820; font-size:1.2rem;
@@ -193,8 +167,6 @@ p,span,div,label,li {{
     border:2px solid #5a3a10; border-radius:6px;
     padding:26px 22px 22px; text-align:center;
     box-shadow:0 4px 20px rgba(0,0,0,0.5); position:relative; overflow:hidden;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
 }}
 .mode-card::before {{
     content:""; position:absolute; top:0; left:0; right:0; height:3px;
@@ -237,8 +209,6 @@ div[data-testid="stButton"]>button {{
     transition:all 0.25s ease !important;
     box-shadow:0 2px 10px rgba(0,0,0,0.5) !important;
     text-shadow:0 0 8px rgba(200,160,60,0.35) !important;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
 }}
 div[data-testid="stButton"]>button:hover {{
     background:rgba(50,25,5,0.96) !important;
@@ -268,8 +238,6 @@ div[data-testid="stButton"]>button:hover {{
     background:rgba(12,6,1,0.80); border:1px solid #4a3010;
     border-top:3px solid #9B7830; border-radius:4px;
     padding:20px 28px 16px; text-align:center; margin-bottom:18px;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
 }}
 .mode-header h3 {{ font-size:1.55rem !important; margin:0 0 5px !important; }}
 .mode-header p  {{ font-size:0.86rem !important; color:#7a6040 !important;
@@ -279,19 +247,11 @@ div[data-testid="stButton"]>button:hover {{
     background:rgba(25,14,4,0.90); border-left:3px solid #C8820C;
     border-bottom:1px solid rgba(200,130,12,0.18);
     padding:12px 16px; margin:10px 0; border-radius:0 6px 6px 0;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    overflow-x:hidden !important;
-    max-width:100% !important;
 }}
 .chat-ai {{
     background:rgba(8,20,10,0.90); border-left:3px solid #4A9A50;
     border-bottom:1px solid rgba(74,154,80,0.18);
     padding:12px 16px; margin:10px 0; border-radius:0 6px 6px 0;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    overflow-x:hidden !important;
-    max-width:100% !important;
 }}
 .chat-name {{
     font-family:'Cinzel',serif !important; font-size:0.78rem !important;
@@ -300,21 +260,12 @@ div[data-testid="stButton"]>button:hover {{
 .chat-content {{
     font-family:'IM Fell English SC',serif !important;
     font-size:0.93rem !important; line-height:1.78 !important;
-    color:#D4BC88 !important;
-    white-space:pre-wrap !important;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    word-break:break-word !important;
-    max-width:100% !important;
+    color:#D4BC88 !important; white-space:pre-wrap;
 }}
 
 .preview-box {{
     background:rgba(12,6,1,0.90); border:2px solid #6B5018;
     border-radius:6px; padding:22px; margin:14px 0;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    overflow-x:hidden !important;
-    max-width:100% !important;
 }}
 .preview-box-title {{
     font-family:'Cinzel Decorative',serif !important;
@@ -332,16 +283,13 @@ div[data-testid="stButton"]>button:hover {{
     font-size: 0.78rem !important;
     color: #A88A58 !important;
     line-height: 1.8 !important;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    overflow-x:hidden !important;
-    max-width:100% !important;
 }}
 .img-limit-notice strong {{
     color: #D4A843 !important;
     font-size: 0.80rem !important;
 }}
 
+/* visual-debug：图片下方的视觉描述小标签 */
 .visual-debug {{
     background: rgba(8,20,8,0.75);
     border: 1px solid #1e3e1e;
@@ -351,47 +299,28 @@ div[data-testid="stButton"]>button:hover {{
     font-size: 0.65rem !important;
     color: #5aaa5a !important;
     line-height: 1.5 !important;
-    word-break: break-all !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
+    word-break: break-all;
     font-family: monospace !important;
     font-style: normal !important;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
-    box-sizing: border-box !important;
 }}
 
 .spec-grid {{
     display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0;
-    max-width:100% !important;
 }}
 .spec-item {{
     background:rgba(25,14,4,0.72); border:1px solid #3a2510;
     border-radius:4px; padding:9px 13px;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    overflow-x:hidden !important;
-    box-sizing:border-box !important;
 }}
 .spec-label {{
     font-family:'Cinzel',serif !important; font-size:0.68rem !important;
     color:#7a5a28 !important; letter-spacing:2px; display:block; margin-bottom:3px;
 }}
-.spec-value {{
-    font-size:0.86rem !important; color:#D4BC88 !important;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    word-break:break-word !important;
-}}
+.spec-value {{ font-size:0.86rem !important; color:#D4BC88 !important; }}
 
 .sound-card {{
     background:rgba(8,20,10,0.82); border:1px solid #2a4a2a;
     border-radius:5px; padding:11px 14px; margin:7px 0;
     transition:border-color 0.2s;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    overflow-x:hidden !important;
-    box-sizing:border-box !important;
 }}
 .sound-card:hover {{ border-color:#4A9A50; }}
 .sound-trigger {{
@@ -401,19 +330,12 @@ div[data-testid="stButton"]>button:hover {{
 .sound-desc {{
     font-size:0.87rem !important; color:#C0D8C0 !important;
     display:block; margin-bottom:4px; line-height:1.6 !important;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    word-break:break-word !important;
 }}
 
 .img-card {{
     background:rgba(8,4,0,0.82); border:1px solid #4a3010;
     border-radius:6px; padding:8px; text-align:center;
     margin-bottom: 8px;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    overflow-x:hidden !important;
-    box-sizing:border-box !important;
 }}
 .img-card-label {{
     font-family:'Cinzel',serif !important; font-size:0.72rem !important;
@@ -428,6 +350,7 @@ div[data-testid="stButton"]>button:hover {{
     text-transform: uppercase;
 }}
 
+/* 音效区域：修复按钮与内容重叠 */
 .sound-player-wrap {{
     margin: 4px 0 6px 0;
     overflow: hidden;
@@ -442,9 +365,6 @@ audio {{
     background:rgba(12,6,1,0.92); border:2px solid #7a4010;
     border-top:3px solid #C8A84B; border-radius:6px;
     padding:30px; text-align:center; margin:14px auto; max-width:600px;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    overflow-x:hidden !important;
 }}
 
 [data-testid="stChatInput"] {{
@@ -474,8 +394,6 @@ audio {{
 }}
 .st-expander [data-testid="stMarkdownContainer"] p {{
     margin: 4px 0 !important; line-height: 1.5 !important;
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
 }}
 hr {{
     border:none !important;
@@ -486,12 +404,19 @@ hr {{
 ::-webkit-scrollbar-track {{ background:rgba(10,5,0,0.3); }}
 ::-webkit-scrollbar-thumb {{ background:#5a3810; border-radius:3px; }}
 
-pre, code {{
-    word-wrap:break-word !important;
-    overflow-wrap:break-word !important;
-    white-space:pre-wrap !important;
-    word-break:break-all !important;
-    max-width:100% !important;
+/* ══ 🔧 强制文本换行与防溢出修复 ══ */
+.stMarkdown, .stMarkdown p, .stMarkdown div, .chat-content, .spec-value, 
+.sound-desc, .visual-debug, .mode-card-desc, .banner-quote, .img-card-label, 
+.spec-label, .sound-card, audio {{
+    word-wrap: break-word !important;
+    overflow-wrap: anywhere !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}}
+.spec-grid {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+    gap: 8px; margin: 10px 0;
 }}
 
 {_creator_tag_css}
@@ -514,18 +439,79 @@ def generate_atlas_xml() -> str:
 </TextureAtlas>
 '''
 
+def _sanitize_for_url(text: str, max_chars: int = 300) -> str:
+    """
+    清理文本用于 URL：
+    移除所有非 ASCII 字符，只保留字母数字空格逗号连字符，按字符数截断。
+    """
+    text = re.sub(r'[^\x00-\x7F]+', ' ', text)
+    text = re.sub(r'[^a-zA-Z0-9\s,\-\.]', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    if len(text) > max_chars:
+        text = text[:max_chars]
+        last_space = text.rfind(' ')
+        if last_space > max_chars // 2:
+            text = text[:last_space]
+    return text.strip()
 
-def _fetch_image_as_bytes(url: str) -> bytes:
-    """下载图片为 bytes，供 st.image() 直接显示"""
-    try:
-        r = requests.get(url, timeout=60)
-        ct = r.headers.get("Content-Type", "").lower()
-        if r.status_code == 200 and "image" in ct and len(r.content) > 500:
-            return r.content
-    except Exception as e:
-        print(f"[DEBUG] _fetch_image_as_bytes failed: {e}")
-    return None
+def _build_image_url(prompt: str, seed: int) -> str:
+    """构建 Pollinations 图片 URL（🔧 修复：安全编码+参数优化）"""
+    clean = _sanitize_for_url(prompt, max_chars=350)
+    if not clean or len(clean) < 8:
+        clean = (
+            "Don't Starve Together game art style Tim Burton gothic cartoon "
+            "thick black ink outlines hand-drawn dark flower 2D game sprite"
+        )
+    
+    # 🔧 使用 urllib 安全编码，彻底避免 & ? = 等字符破坏 URL 结构
+    enc_prompt = urllib.parse.quote_plus(clean)
+    neg_prompt = urllib.parse.quote_plus(
+        "realistic photo 3d render anime bright colors text watermark blurry"
+    )
+    
+    url = (
+        f"https://image.pollinations.ai/prompt/{enc_prompt}"
+        f"?width=512&height=512"
+        f"&nologo=true"
+        f"&negative={neg_prompt}"
+        f"&model=flux"
+        f"&seed={seed % 99999}"
+    )
+    return url
 
+def fetch_image(full_prompt: str) -> dict:
+    """
+    获取图片，自动重试 2 次（换种子）。
+    full_prompt：已包含风格锚定词的完整英文 prompt。
+    """
+    seed = int(datetime.now().timestamp()) % 99999
+    # 🔧 增加浏览器请求头，避免被 CDN 拦截
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    
+    for attempt in range(2):
+        try:
+            url = _build_image_url(full_prompt, seed + attempt * 3333)
+            print(f"[DEBUG] fetch_image attempt={attempt+1} | URL长度={len(url)}")
+            
+            r = requests.get(url, timeout=90, headers=headers)
+            if r.status_code == 200 and len(r.content) > 1000:
+                return {
+                    "ok":  True,
+                    "b64": base64.b64encode(r.content).decode(),
+                    "url": url,
+                }
+            print(f"[WARN] 响应异常: status={r.status_code} size={len(r.content)}")
+            if r.status_code == 400:
+                print(f"[WARN] 可能 Prompt 含非法字符，已清理重试")
+        except requests.Timeout:
+            print(f"[WARN] 请求超时 attempt={attempt+1}")
+            if attempt == 1:
+                return {"ok": False, "err": "图片生成超时（>90s），请点击重生成重试"}
+        except Exception as e:
+            print(f"[ERROR] 请求异常: {e}")
+            if attempt == 1:
+                return {"ok": False, "err": "网络波动或接口限流，请点击重生成重试"}
+    return {"ok": False, "err": "两次尝试均失败，请点击重生成重试"}
 
 def make_zip(mod: dict) -> bytes:
     install_txt = """══════════════════════════════════════
@@ -561,7 +547,6 @@ CREATED BY DST MOD GENERATOR · PRODUCER · LETITIA
     buf.seek(0)
     return buf.getvalue()
 
-
 def render_chat(messages: list):
     for m in messages:
         if not isinstance(m, dict):
@@ -579,7 +564,6 @@ def render_chat(messages: list):
                 f'✦ SHADOW ARCHITECT</span>'
                 f'<span class="chat-content">{m["content"]}</span>'
                 f'</div>', unsafe_allow_html=True)
-
 
 def reset_to_home():
     st.session_state.update({
@@ -605,6 +589,7 @@ def _get_prompt_entry_for_idx(idx: int) -> dict:
     all_prompts = visual.get("all_prompts", [])
     if idx < len(all_prompts):
         return all_prompts[idx]
+    # 降级兜底
     base = visual.get("optimized_prompt", (
         "Don't Starve Together game art style, Tim Burton gothic cartoon, "
         "thick black ink outlines, hand-drawn sketch texture, "
@@ -613,14 +598,11 @@ def _get_prompt_entry_for_idx(idx: int) -> dict:
     ))
     return {"label": f"变体 #{idx+1}", "prompt": base, "visual_en": "dark mysterious flower"}
 
-
 def _get_full_prompt_for_idx(idx: int) -> str:
     return _get_prompt_entry_for_idx(idx).get("prompt", "")
 
-
 def _get_label_for_idx(idx: int, default: str = "贴图") -> str:
     return _get_prompt_entry_for_idx(idx).get("label", f"{default} #{idx+1}")
-
 
 def _get_visual_en_for_idx(idx: int) -> str:
     return _get_prompt_entry_for_idx(idx).get("visual_en", "")
@@ -632,6 +614,7 @@ def _get_visual_en_for_idx(idx: int) -> str:
 def synth_audio_html(params: dict, element_id: str) -> str:
     """
     生成 Web Audio API 合成音效的 HTML+JS。
+    修复：统一高度，避免与 Streamlit 按钮重叠。
     """
     if not params:
         return ""
@@ -670,6 +653,7 @@ def synth_audio_html(params: dict, element_id: str) -> str:
         lfo2.start(now); lfo2.stop(now + dur);
         """
 
+    # 注意：height 固定 70px，内容撑开不会和外部元素重叠
     return f"""
 <div style="
     background:rgba(15,30,15,0.70);
@@ -738,7 +722,7 @@ function playSynth_{safe_id}() {{
     const btn = document.getElementById('play_{safe_id}');
     btn.style.background = 'rgba(60,120,60,0.90)';
     btn.style.color = '#aaffaa';
-    btn.textContent = '\\u266b 播放中\\u2026';
+    btn.textContent = '\u266b 播放中\u2026';
     setTimeout(() => {{
         btn.style.background = 'rgba(30,60,30,0.80)';
         btn.style.color = '#88cc88';
@@ -773,7 +757,6 @@ def _get_or_generate_sfx(cache_key: str, sfx_data: dict,
         duration        = duration,
     )
 
-
 def render_sound_preview(sound: dict):
     st.markdown('<div class="preview-box">', unsafe_allow_html=True)
     st.markdown('<p class="preview-box-title">&#128266; 音效方案</p>',
@@ -807,6 +790,7 @@ def render_sound_preview(sound: dict):
         cache_key    = f"sfx_{i}"
         color        = faction_colors.get(faction, "#4A9A50")
 
+        # 音效卡片：只显示文字描述，不在 HTML 里放按钮
         st.markdown(f"""
         <div class="sound-card">
           <span class="sound-trigger" style="color:{color};">
@@ -816,9 +800,12 @@ def render_sound_preview(sound: dict):
         </div>
         """, unsafe_allow_html=True)
 
+        # 试听 / 状态区（全部用 Streamlit 原生组件，避免重叠）
         if cache_key in cache:
             entry = cache[cache_key]
             if entry.get("ok") and entry.get("source") == "synth":
+                # 使用 components.v1.html 渲染音效播放器
+                # 高度设为 70px，足够容纳按钮+间距
                 html = synth_audio_html(entry.get("synth_params", {}),
                                         f"sfx{i}")
                 if html:
@@ -844,6 +831,7 @@ def render_sound_preview(sound: dict):
                     st.session_state.sound_audio_cache[cache_key] = result
                 st.rerun()
 
+        # 分隔线
         st.markdown(
             '<hr style="border-top:1px solid rgba(30,60,30,0.4);'
             'margin:6px 0 2px 0;">',
@@ -923,7 +911,7 @@ def render_sound_preview(sound: dict):
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════
-# 🎨 多图预览组件（修复版：用 b64 bytes 显示图片）
+# 🎨 多图预览组件
 # ══════════════════════════════════════════════════════════════
 
 def _render_image_limit_notice(num_images: int):
@@ -940,41 +928,8 @@ def _render_image_limit_notice(num_images: int):
     </div>
     """, unsafe_allow_html=True)
 
-
-def _display_image_safe(img_data: dict) -> bool:
-    """
-    安全显示图片：优先用 b64 bytes，其次尝试下载 URL 为 bytes，
-    最后才直接传 URL（可能失败）。
-    返回：是否成功显示。
-    """
-    # 方案1：用 b64 解码为 bytes
-    if img_data.get("b64"):
-        try:
-            img_bytes = base64.b64decode(img_data["b64"])
-            if len(img_bytes) > 500:
-                st.image(img_bytes, use_container_width=True)
-                return True
-        except Exception as e:
-            print(f"[DEBUG] b64 decode failed: {e}")
-
-    # 方案2：下载 URL 为 bytes
-    if img_data.get("url"):
-        img_bytes = _fetch_image_as_bytes(img_data["url"])
-        if img_bytes:
-            st.image(img_bytes, use_container_width=True)
-            return True
-        # 方案3：直接传 URL（可能在某些 Streamlit 环境下失败）
-        try:
-            st.image(img_data["url"], use_container_width=True)
-            return True
-        except Exception as e:
-            print(f"[DEBUG] st.image(url) failed: {e}")
-
-    return False
-
-
 def render_image_gallery(visual: dict, spec: dict):
-    """渲染多图预览区（修复版）"""
+    """渲染多图预览区"""
     images  = st.session_state.preview_images
     n       = len(images)
     obj     = spec.get("main_object", {})
@@ -994,6 +949,7 @@ def render_image_gallery(visual: dict, spec: dict):
 
     _render_image_limit_notice(n)
 
+    # 每行最多 2 列
     cols_per_row = min(n, 2)
     rows = [images[i:i + cols_per_row]
             for i in range(0, n, cols_per_row)]
@@ -1007,25 +963,33 @@ def render_image_gallery(visual: dict, spec: dict):
             visual_en  = img_data.get("visual_en", "")
 
             with col:
+                # 图标徽章
                 if is_icon:
                     st.markdown(
                         '<span class="img-icon-badge">&#9733; MOD ICON</span>',
                         unsafe_allow_html=True)
 
+                # 图片容器
                 st.markdown('<div class="img-card">', unsafe_allow_html=True)
 
-                # ========== 核心修复：安全显示图片 ==========
-                displayed = _display_image_safe(img_data)
-                if not displayed:
+                if img_data.get("url"):
+                    st.image(img_data["url"], use_container_width=True)
+                    st.markdown(
+                        f'<span class="img-card-label">#{global_idx+1} {label}</span>',
+                        unsafe_allow_html=True)
+                else:
                     err_msg = img_data.get("err", "生成失败，请重试")
-                    st.error(f"#{global_idx+1} {label}: {err_msg}")
-                # ============================================
+                    st.markdown(
+                        f'<p style="color:#6a3820;text-align:center;'
+                        f'font-style:italic;padding:20px 4px;font-size:0.8rem;">'
+                        f'#{global_idx+1} {label}<br>'
+                        f'<span style="font-size:0.70rem;color:#4a2818;">'
+                        f'{err_msg}</span></p>',
+                        unsafe_allow_html=True)
 
-                st.markdown(
-                    f'<span class="img-card-label">#{global_idx+1} {label}</span>',
-                    unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
+                # visual_en 调试标签（图片卡外，避免影响卡片布局）
                 if visual_en:
                     st.markdown(
                         f'<div class="visual-debug">{visual_en}</div>',
@@ -1046,14 +1010,13 @@ def render_image_gallery(visual: dict, spec: dict):
                                 "visual_en": _get_visual_en_for_idx(global_idx),
                                 "err":       "",
                             }
-                            st.success(f"#{global_idx+1} 重新生成成功！")
                         else:
                             st.session_state.preview_images[global_idx]["err"] = (
                                 new_img["err"])
-                            st.error(f"生成失败：{new_img['err']}")
+                            st.warning(f"生成失败：{new_img['err']}")
                     st.rerun()
 
-    # ── Prompt 详情折叠区 ───────────────────────────────
+    # ── Prompt 详情（折叠，修复乱码：不用 emoji 做标题）─
     all_prompts = visual.get("all_prompts", [])
     if all_prompts:
         with st.expander("查看绘图 Prompt（调试用）", expanded=False):
@@ -1085,14 +1048,12 @@ def render_image_gallery(visual: dict, spec: dict):
                 visual_en = entry.get("visual_en", "")
                 img = fetch_image(full_p)
                 new_images.append({
-                    "url":       img.get("url"),
-                    "b64":       img.get("b64"),
+                    "url":       img["url"] if img["ok"] else None,
+                    "b64":       img["b64"] if img["ok"] else None,
                     "label":     lbl,
                     "visual_en": visual_en,
                     "err":       img.get("err", "") if not img["ok"] else "",
                 })
-                if not img["ok"]:
-                    st.error(f"#{idx+1}「{lbl}」: {img.get('err','')}")
             st.session_state.preview_images = new_images
         failed = [i + 1 for i, im in enumerate(new_images) if not im.get("url")]
         if failed:
@@ -1102,7 +1063,7 @@ def render_image_gallery(visual: dict, spec: dict):
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════
-# 🎨 预览页（修复版：生成按钮显示错误信息）
+# 🎨 预览页
 # ══════════════════════════════════════════════════════════════
 
 def render_preview_stage():
@@ -1277,25 +1238,20 @@ def render_preview_stage():
                             f"✦ 生成第 {idx+1}/{num} 张「{lbl}」……"):
                         img = fetch_image(full_p)
                         new_images.append({
-                            "url":       img.get("url"),
-                            "b64":       img.get("b64"),
+                            "url":       img["url"] if img["ok"] else None,
+                            "b64":       img["b64"] if img["ok"] else None,
                             "label":     lbl,
                             "visual_en": visual_en,
                             "err":       img.get("err","") if not img["ok"] else "",
                         })
                         if not img["ok"]:
                             failed_list.append(idx + 1)
-                            st.error(
-                                f"第 {idx+1} 张「{lbl}」生成失败: "
-                                f"{img.get('err','')}")
                     prog.progress((idx + 1) / num)
                 st.session_state.preview_images = new_images
                 if failed_list:
                     st.warning(
                         f"第 {failed_list} 张生成失败，"
-                        f"可在预览区点击「重生成」单独重试")
-                else:
-                    st.success(f"✦ 全部 {num} 张图腾已召唤成功！")
+                        f"可在预览区点击重生成单独重试")
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1417,450 +1373,4 @@ def render_generating_stage():
     with st.spinner("✦ 归入典藏……"):
         st.session_state.messages.append({
             "role":    "assistant",
-            "content": result.get("text", "✦ Mod 铸造完毕。")
-        })
-        d = result.get("data", {})
-        if d:
-            first_url = (st.session_state.preview_images[0].get("url")
-                         if st.session_state.preview_images else None)
-            st.session_state.generated_mods.append({
-                "id":        len(st.session_state.generated_mods) + 1,
-                "name":      d.get("name", spec.get(
-                    "mod_name_en", f"Mod_{datetime.now().strftime('%H%M')}")),
-                "name_cn":   spec.get("mod_name_cn", ""),
-                "desc":      d.get("desc", spec.get("description", "")),
-                "date":      datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "design":    st.session_state.final_design,
-                "spec":      spec,
-                "all_files": d.get("files", {}),
-                "image_url": first_url,
-                "all_images": [
-                    img.get("url") for img in st.session_state.preview_images
-                    if img.get("url")
-                ],
-            })
-    bar.progress(100)
-
-    st.session_state.stage      = "done"
-    st.session_state.generating = False
-    st.rerun()
-
-# ══════════════════════════════════════════════════════════════
-# 💬 对话阶段
-# ══════════════════════════════════════════════════════════════
-
-def _enter_preview():
-    with st.spinner("✦ 永恒大陆的使者正在整理设计蓝图……"):
-        spec = summarize_design(st.session_state.messages)
-        st.session_state.design_spec  = spec
-        st.session_state.final_design = json.dumps(
-            spec, ensure_ascii=False, indent=2)
-
-    with st.spinner("✦ AI 正在为每个对象生成专属绘图描述……"):
-        visual = optimize_visual_prompt(spec)
-        st.session_state.visual_result = visual
-        all_prompts = visual.get("all_prompts", [])
-        print(f"[DEBUG] 共生成 {len(all_prompts)} 条图片 prompt：")
-        for i, ap in enumerate(all_prompts):
-            print(f"  #{i+1} [{ap.get('label','')}]")
-            print(f"    视觉描述: {ap.get('visual_en','')}")
-            print(f"    完整prompt({len(ap.get('prompt',''))}字符): "
-                  f"{ap.get('prompt','')[:80]}...")
-
-    with st.spinner("✦ 编排音效方案……"):
-        sound = generate_sound_prompts(spec)
-        st.session_state.sound_result = sound
-        sfx_list = sound.get("sound_effects", [])
-        print(f"[DEBUG] 生成 {len(sfx_list)} 条音效：")
-        for sfx in sfx_list:
-            print(f"  [{sfx.get('faction','')}] {sfx.get('trigger','')}："
-                  f"{sfx.get('description_cn','')}")
-
-    st.session_state.preview_images    = []
-    st.session_state.sound_audio_cache = {}
-    st.session_state.num_images        = 1
-    st.session_state.stage             = "preview"
-    st.rerun()
-
-
-def render_chat_stage(mode: str):
-    is_explore = (mode == "explore")
-
-    if is_explore:
-        st.markdown("""
-        <div class="mode-header">
-          <h3 style="color:#4CAF50 !important;">迷雾探路者 · Shadow Explore</h3>
-          <p>与永恒大陆的使者充分对话，明确设计后点击「预览并确认」</p>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div class="mode-header">
-          <h3 style="color:#D4A843 !important;">意志铸剑者 · Rapid Forge</h3>
-          <p>输入你的构想，永恒大陆的使者将细化设计，确认后点击「预览并确认」</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    render_chat(st.session_state.messages)
-
-    placeholder = ("低语你的构想，永恒大陆的使者将倾听……"
-                   if is_explore else "将你的意志化为文字……")
-    user_inp = st.chat_input(placeholder)
-
-    if user_inp:
-        st.session_state.messages.append({"role": "user", "content": user_inp})
-        with st.spinner("✦ 永恒大陆的使者正在回应……"):
-            try:
-                if is_explore:
-                    r = explore_with_llm(st.session_state.messages)
-                else:
-                    r = rapid_with_llm(st.session_state.messages)
-                reply = (r.get("text", str(r))
-                         if isinstance(r, dict) else str(r))
-            except Exception as exc:
-                reply = f"（永恒大陆沉默了：{exc}）"
-        st.session_state.messages.append(
-            {"role": "assistant", "content": reply})
-        st.rerun()
-
-    if len(st.session_state.messages) >= 2:
-        st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown("""
-        <p style="text-align:center;font-size:0.82rem;color:#5a4020;
-                  font-style:italic;margin-bottom:8px;letter-spacing:1px;">
-          ✦ 设计已足够清晰？令混沌凝固成形 ✦
-        </p>
-        """, unsafe_allow_html=True)
-        c1, c2, c3 = st.columns([1, 3, 1])
-        with c2:
-            st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
-            if st.button("✦ 预览并确认设计 · Preview & Confirm",
-                         key=f"{mode}_preview_btn", use_container_width=True):
-                _enter_preview()
-            st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("← 归返主页 · Return", key=f"back_{mode}"):
-        reset_to_home()
-        st.rerun()
-
-# ══════════════════════════════════════════════════════════════
-# ✅ 完成页
-# ══════════════════════════════════════════════════════════════
-
-def render_done_stage():
-    spec = st.session_state.design_spec or {}
-    st.markdown(f"""
-    <div class="dst-banner">
-      <h2 style="font-size:1.9rem;margin:0;">✨ MOD 已铸造完成</h2>
-      <p class="banner-sub">THE MOD HAS BEEN FORGED INTO REALITY</p>
-      <hr class="banner-divider">
-      <p class="banner-quote">
-        {spec.get("mod_name_cn","你的 MOD")} &middot; {spec.get("mod_name_en","")}<br>
-        <em>混沌已凝固，你的疯狂已成为现实。</em>
-      </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    render_chat(st.session_state.messages[-4:])
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    ca, cb = st.columns(2)
-    with ca:
-        if st.button("继续雕琢 · Refine",
-                     use_container_width=True, key="done_refine"):
-            st.session_state.stage = "chat"
-            st.session_state.mode  = "explore"
-            st.rerun()
-    with cb:
-        if st.button("归返主页 · Return",
-                     use_container_width=True, key="done_home"):
-            reset_to_home()
-            st.rerun()
-
-# ══════════════════════════════════════════════════════════════
-# 📖 弹窗：创作者想说
-# ══════════════════════════════════════════════════════════════
-
-@st.dialog("创作者想说", width="large")
-def show_producer_message():
-    st.markdown("""
-    <div style="font-family:'IM Fell English SC',serif;font-size:1rem;
-                line-height:2;color:#D4BC88;text-align:justify;
-                word-wrap:break-word;overflow-wrap:break-word;">
-      <p style="margin-bottom:18px;">
-        这个 <strong>MOD 生成器</strong>诞生于对《饥荒联机版》的热爱，
-        以及对<strong>创造自由</strong>的向往。
-      </p>
-      <p style="margin-bottom:18px;">
-        核心使命：<strong style="color:#FFD700;">让每一位想在游戏世界中自由创造、
-        但不会编写代码的玩家，都能实现真正的"创造模式"</strong>。
-      </p>
-      <p style="margin-bottom:10px;">
-        <strong style="color:#C8A84B;">现已支持：</strong>
-      </p>
-      <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
-        <li>多对象MOD设计（如四种花各有独立设计）</li>
-        <li>每个对象独立贴图生成（1–4张，AI为每个对象生成专属视觉描述）</li>
-        <li>阵营感知音效（影系/月亮系/自然系各有特色）</li>
-        <li>完整Lua代码框架一键生成</li>
-        <li>打包ZIP直接安装</li>
-      </ul>
-      <p style="margin-bottom:10px;">
-        <strong style="color:#C8A84B;">贴图生成说明：</strong>
-      </p>
-      <ul style="margin-left:28px;margin-bottom:20px;line-height:2;">
-        <li>最多支持生成 <strong>4 张</strong>贴图（当前工具上限）</li>
-        <li>第 1 张自动作为 MOD 图标，其余存入 images/ 目录</li>
-        <li>每张图由 AI 根据对象外观描述独立生成视觉 Prompt，内容真实对应</li>
-        <li>如 AI 生成失败，可点击重生成单独重试</li>
-        <li>如需更多贴图，下载 MOD 包后手动在 images/ 目录添加</li>
-      </ul>
-      <p style="text-align:center;margin-top:28px;color:#D4A843;
-                font-style:italic;font-size:1.1rem;letter-spacing:2px;">
-        ✦ 愿你的创造力在永恒大陆中永不熄灭 ✦
-      </p>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("关闭", use_container_width=True, key="close_producer"):
-        st.session_state.show_producer_msg = False
-        st.rerun()
-
-# ══════════════════════════════════════════════════════════════
-# 📖 弹窗：MOD 安装教程
-# ══════════════════════════════════════════════════════════════
-
-@st.dialog("MOD 安装与使用教程", width="large")
-def show_install_guide():
-    st.markdown("### 一、下载 MOD")
-    st.write("在左侧「MOD 典藏库」中点击「下载 MOD 包」，获得 .zip 压缩包。")
-    st.markdown("### 二、安装步骤")
-    st.write("1. 解压下载的 ZIP 文件")
-    st.write("2. 将文件夹复制到 MOD 目录：")
-    st.code("C:/Users/用户名/Documents/Klei/DoNotStarveTogether/mods/",
-            language="")
-    st.caption("Windows 路径")
-    st.code("Steam/steamapps/common/Don't Starve Together/mods/", language="")
-    st.caption("Steam 路径")
-    st.write("3. 游戏主菜单 → 模组 → 找到 MOD → 启用")
-    st.write("4. 创建存档，MOD 即刻生效")
-    st.markdown("### 三、注意事项")
-    st.warning("api_version 必须为 10")
-    st.warning("多人游戏时所有玩家需安装")
-    st.markdown("### 四、贴图说明")
-    st.info(f"本工具最多生成 {MAX_IMAGES} 张贴图（1 张主图标 + 最多 3 张变体）")
-    st.write("第一张贴图自动作为 modicon（MOD图标）")
-    st.write(f"第 2–{MAX_IMAGES} 张存放在 images/ 目录，可在代码中按名称引用")
-    st.write(f"如需超过 {MAX_IMAGES} 张，下载后在 images/ 目录手动添加即可")
-    st.markdown("### 五、音效说明")
-    st.write("音效为 Web Audio 合成预览，正式发布时建议替换为 .wav 文件")
-    st.markdown("---")
-    st.markdown(
-        "<p style='text-align:center;color:#D4A843;font-style:italic;'>"
-        "✦ 祝你在永恒大陆玩得愉快 ✦</p>",
-        unsafe_allow_html=True)
-    if st.button("关闭", use_container_width=True, key="close_install"):
-        st.session_state.show_install_guide = False
-        st.rerun()
-
-# ══════════════════════════════════════════════════════════════
-# 🏠 主页
-# ══════════════════════════════════════════════════════════════
-
-def render_home():
-    st.markdown("""
-    <div class="dst-banner">
-      <h1 style="font-size:2.7rem;margin:0;">饥荒 MOD 生成器</h1>
-      <p class="banner-sub">DON'T STARVE TOGETHER · MOD GENERATOR</p>
-      <hr class="banner-divider">
-      <p class="banner-quote">
-        当理智归零，现实崩塌。<br>
-        <em>You are no longer a survivor — but a Creator.</em>
-      </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="mode-cards">
-      <div class="mode-card">
-        <span class="mode-card-icon">&#9889;</span>
-        <p class="mode-card-title">意志铸剑者</p>
-        <span class="mode-card-sub">RAPID FORGE</span>
-        <hr class="mode-card-divider">
-        <p class="mode-card-desc">
-          当你已明晰 Mod 的核心法则<br>
-          将你的疯狂构想直接锻造成现实
-          <span class="mode-card-en">For when your vision is clear.</span>
-        </p>
-        <span class="mode-card-hint">点击下方按钮进入</span>
-      </div>
-      <div class="mode-card">
-        <span class="mode-card-icon">&#128065;</span>
-        <p class="mode-card-title">迷雾探路者</p>
-        <span class="mode-card-sub">SHADOW EXPLORE</span>
-        <hr class="mode-card-divider">
-        <p class="mode-card-desc">
-          当灵感如迷雾般在脑海低语<br>
-          与暗影对话，让蓝图逐渐清晰
-          <span class="mode-card-en">For when inspiration is foggy.</span>
-        </p>
-        <span class="mode-card-hint">点击下方按钮进入</span>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
-        if st.button("快速生成 · Rapid Forge",
-                     key="k_rapid", use_container_width=True):
-            st.session_state.update({
-                "mode": "rapid", "stage": "chat",
-                "messages": [], "final_design": "",
-                "design_spec": None, "sound_audio_cache": {},
-                "preview_images": [], "num_images": 1,
-                "show_producer_msg": False,
-            })
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col2:
-        st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
-        if st.button("探索设计 · Shadow Explore",
-                     key="k_explore", use_container_width=True):
-            st.session_state.update({
-                "mode": "explore", "stage": "chat",
-                "messages": [], "final_design": "",
-                "design_spec": None, "sound_audio_cache": {},
-                "preview_images": [], "num_images": 1,
-                "show_producer_msg": False,
-            })
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="creator-tag">
-      <p class="creator-name">✦ PRODUCER · LETITIA ✦</p>
-      <hr class="creator-divider">
-      <p>1135462669@qq.com</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    col_l, col_c, col_r = st.columns([1, 2, 1])
-    with col_c:
-        if st.button("创作者想说 · FROM PRODUCER",
-                     use_container_width=True, key="btn_producer_msg"):
-            st.session_state.show_producer_msg = True
-            st.rerun()
-
-    if st.session_state.show_producer_msg:
-        show_producer_message()
-
-# ══════════════════════════════════════════════════════════════
-# 🚦 路由
-# ══════════════════════════════════════════════════════════════
-
-mode  = st.session_state.mode
-stage = st.session_state.stage
-
-if mode == "home":
-    render_home()
-elif mode in ("explore", "rapid"):
-    if   stage == "chat":       render_chat_stage(mode)
-    elif stage == "preview":    render_preview_stage()
-    elif stage == "generating": render_generating_stage()
-    elif stage == "done":       render_done_stage()
-
-# ══════════════════════════════════════════════════════════════
-# 📦 侧边栏
-# ══════════════════════════════════════════════════════════════
-
-with st.sidebar:
-    st.markdown("### ✦ MOD 典藏库")
-    st.caption("— Mod Archive —")
-
-    if not st.session_state.generated_mods:
-        st.markdown("""
-        <p style="color:#4a3018;font-style:italic;font-size:0.82rem;
-                  text-align:center;margin-top:14px;">
-          典藏库空空如也……<br>
-          <em>The archive awaits your creations...</em>
-        </p>
-        """, unsafe_allow_html=True)
-    else:
-        for mod in reversed(st.session_state.generated_mods):
-            label = f"{mod.get('name_cn') or mod['name']}"
-            with st.expander(label):
-                st.markdown(f"**{mod['date']}**  ·  `{mod['name']}`")
-                if mod.get("desc"):
-                    desc_text = (mod["desc"][:100]
-                                 + ("..." if len(mod["desc"]) > 100 else ""))
-                    st.caption(desc_text)
-
-                all_imgs = mod.get("all_images", [])
-                if all_imgs:
-                    thumb_cols = st.columns(min(len(all_imgs), 3))
-                    for tc, img_url in zip(thumb_cols, all_imgs[:3]):
-                        with tc:
-                            # 侧边栏缩略图也用 bytes 下载避免失败
-                            thumb_bytes = _fetch_image_as_bytes(img_url)
-                            if thumb_bytes:
-                                st.image(thumb_bytes, use_container_width=True)
-                            else:
-                                st.image(img_url, width=110)
-                elif mod.get("image_url"):
-                    thumb_bytes = _fetch_image_as_bytes(mod["image_url"])
-                    if thumb_bytes:
-                        st.image(thumb_bytes, width=110)
-                    else:
-                        st.image(mod["image_url"], width=110)
-
-                img_count = len(all_imgs)
-                if img_count > 0:
-                    st.caption(
-                        f"包含 {img_count} 张贴图"
-                        f"{'（已达上限）' if img_count >= MAX_IMAGES else ''}")
-
-                z = make_zip(mod)
-                st.download_button(
-                    "下载 MOD 包",
-                    data=z,
-                    file_name=f"{mod['name']}.zip",
-                    mime="application/zip",
-                    use_container_width=True,
-                    key=f"dl_{mod['id']}"
-                )
-                if st.button("重新优化",
-                             key=f"re_{mod['id']}",
-                             use_container_width=True):
-                    st.session_state.update({
-                        "mode":              "explore",
-                        "stage":             "chat",
-                        "final_design":      mod["design"],
-                        "messages":          [{"role": "user",
-                                               "content": mod.get("design", "")}],
-                        "sound_audio_cache": {},
-                        "preview_images":    [],
-                        "num_images":        1,
-                        "show_producer_msg": False,
-                    })
-                    st.rerun()
-
-    st.divider()
-    if st.button("MOD 安装教程",
-                 use_container_width=True, key="btn_install_guide"):
-        st.session_state.show_install_guide = True
-        st.rerun()
-
-    st.divider()
-    st.caption(f"本次对话：{len(st.session_state.messages)} 条")
-    st.caption(f"已生成 Mod：{len(st.session_state.generated_mods)} 个")
-    st.divider()
-    if st.button("清除全部记录", use_container_width=True):
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
-        st.rerun()
-
-# ══ 安装教程弹窗（全局）══
-if st.session_state.show_install_guide:
-    show_install_guide()
+            "content": result.get("text", "✦
