@@ -58,7 +58,7 @@ BASE_URL = (
 BG_URL = BASE_URL + "background.jpg.png"
 
 # ══════════════════════════════════════════════════════════════
-# 🎨 CSS
+# 🎨 CSS（修复文字溢出版）
 # ══════════════════════════════════════════════════════════════
 _creator_tag_css = ""
 if st.session_state.mode == "home":
@@ -70,6 +70,8 @@ if st.session_state.mode == "home":
         border: 2px solid rgba(139,100,32,0.5); border-radius: 6px;
         padding: 14px 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.7);
         opacity: 0.85; transition: all 0.3s ease;
+        word-wrap: break-word; overflow-wrap: break-word;
+        max-width: 280px;
     }
     .creator-tag:hover {
         opacity: 1.0; border-color: rgba(200,168,75,0.75);
@@ -97,6 +99,14 @@ st.markdown(f"""
 @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English+SC:ital@0;1&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&display=swap');
 
+/* ═══ 全局文字溢出保护 ═══ */
+* {{
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+    box-sizing: border-box !important;
+}}
+
 .stApp {{
     background-image: url("{BG_URL}");
     background-size: cover; background-position: center;
@@ -108,6 +118,8 @@ st.markdown(f"""
 }}
 .stAppViewContainer .stMainBlockContainer, .block-container {{
     background:rgba(20,11,3,0.55) !important; backdrop-filter:blur(2px);
+    max-width:100% !important;
+    overflow-x:hidden !important;
 }}
 html,[class*="css"] {{ background-color:transparent !important; }}
 
@@ -115,9 +127,14 @@ section[data-testid="stSidebar"] {{
     background:rgba(15,8,2,0.72) !important;
     border-right:2px solid rgba(160,100,30,0.35) !important;
     backdrop-filter:blur(4px);
+    overflow-x:hidden !important;
 }}
 section[data-testid="stSidebar"]>div {{ background:transparent !important; }}
-section[data-testid="stSidebar"] * {{ color:#C8A868 !important; }}
+section[data-testid="stSidebar"] * {{
+    color:#C8A868 !important;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+}}
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3 {{ color:#D4A843 !important; }}
@@ -126,9 +143,13 @@ h1,h2,h3 {{
     font-family:'Cinzel Decorative',serif !important; color:#D4A843 !important;
     text-shadow:0 0 20px rgba(200,160,60,0.4),2px 2px 4px rgba(0,0,0,0.8) !important;
     letter-spacing:2px !important;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
 }}
 p,span,div,label,li {{
     font-family:'IM Fell English SC',serif !important; color:#EDD9A3 !important;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
 }}
 
 .dst-banner {{
@@ -138,6 +159,9 @@ p,span,div,label,li {{
     text-align:center; margin:10px auto 28px; max-width:820px;
     box-shadow:0 0 60px rgba(0,0,0,0.7),inset 0 0 30px rgba(0,0,0,0.4);
     position:relative;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    overflow-x:hidden !important;
 }}
 .dst-banner::before,.dst-banner::after {{
     content:"✦"; position:absolute; top:12px; color:#7B5820; font-size:1.2rem;
@@ -166,6 +190,8 @@ p,span,div,label,li {{
     border:2px solid #5a3a10; border-radius:6px;
     padding:26px 22px 22px; text-align:center;
     box-shadow:0 4px 20px rgba(0,0,0,0.5); position:relative; overflow:hidden;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
 }}
 .mode-card::before {{
     content:""; position:absolute; top:0; left:0; right:0; height:3px;
@@ -208,6 +234,8 @@ div[data-testid="stButton"]>button {{
     transition:all 0.25s ease !important;
     box-shadow:0 2px 10px rgba(0,0,0,0.5) !important;
     text-shadow:0 0 8px rgba(200,160,60,0.35) !important;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
 }}
 div[data-testid="stButton"]>button:hover {{
     background:rgba(50,25,5,0.96) !important;
@@ -237,6 +265,8 @@ div[data-testid="stButton"]>button:hover {{
     background:rgba(12,6,1,0.80); border:1px solid #4a3010;
     border-top:3px solid #9B7830; border-radius:4px;
     padding:20px 28px 16px; text-align:center; margin-bottom:18px;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
 }}
 .mode-header h3 {{ font-size:1.55rem !important; margin:0 0 5px !important; }}
 .mode-header p  {{ font-size:0.86rem !important; color:#7a6040 !important;
@@ -246,11 +276,19 @@ div[data-testid="stButton"]>button:hover {{
     background:rgba(25,14,4,0.90); border-left:3px solid #C8820C;
     border-bottom:1px solid rgba(200,130,12,0.18);
     padding:12px 16px; margin:10px 0; border-radius:0 6px 6px 0;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    overflow-x:hidden !important;
+    max-width:100% !important;
 }}
 .chat-ai {{
     background:rgba(8,20,10,0.90); border-left:3px solid #4A9A50;
     border-bottom:1px solid rgba(74,154,80,0.18);
     padding:12px 16px; margin:10px 0; border-radius:0 6px 6px 0;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    overflow-x:hidden !important;
+    max-width:100% !important;
 }}
 .chat-name {{
     font-family:'Cinzel',serif !important; font-size:0.78rem !important;
@@ -259,12 +297,21 @@ div[data-testid="stButton"]>button:hover {{
 .chat-content {{
     font-family:'IM Fell English SC',serif !important;
     font-size:0.93rem !important; line-height:1.78 !important;
-    color:#D4BC88 !important; white-space:pre-wrap;
+    color:#D4BC88 !important;
+    white-space:pre-wrap !important;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    word-break:break-word !important;
+    max-width:100% !important;
 }}
 
 .preview-box {{
     background:rgba(12,6,1,0.90); border:2px solid #6B5018;
     border-radius:6px; padding:22px; margin:14px 0;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    overflow-x:hidden !important;
+    max-width:100% !important;
 }}
 .preview-box-title {{
     font-family:'Cinzel Decorative',serif !important;
@@ -282,13 +329,16 @@ div[data-testid="stButton"]>button:hover {{
     font-size: 0.78rem !important;
     color: #A88A58 !important;
     line-height: 1.8 !important;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    overflow-x:hidden !important;
+    max-width:100% !important;
 }}
 .img-limit-notice strong {{
     color: #D4A843 !important;
     font-size: 0.80rem !important;
 }}
 
-/* visual-debug：图片下方的视觉描述小标签 */
 .visual-debug {{
     background: rgba(8,20,8,0.75);
     border: 1px solid #1e3e1e;
@@ -298,28 +348,47 @@ div[data-testid="stButton"]>button:hover {{
     font-size: 0.65rem !important;
     color: #5aaa5a !important;
     line-height: 1.5 !important;
-    word-break: break-all;
+    word-break: break-all !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
     font-family: monospace !important;
     font-style: normal !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
 }}
 
 .spec-grid {{
     display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0;
+    max-width:100% !important;
 }}
 .spec-item {{
     background:rgba(25,14,4,0.72); border:1px solid #3a2510;
     border-radius:4px; padding:9px 13px;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    overflow-x:hidden !important;
+    box-sizing:border-box !important;
 }}
 .spec-label {{
     font-family:'Cinzel',serif !important; font-size:0.68rem !important;
     color:#7a5a28 !important; letter-spacing:2px; display:block; margin-bottom:3px;
 }}
-.spec-value {{ font-size:0.86rem !important; color:#D4BC88 !important; }}
+.spec-value {{
+    font-size:0.86rem !important; color:#D4BC88 !important;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    word-break:break-word !important;
+}}
 
 .sound-card {{
     background:rgba(8,20,10,0.82); border:1px solid #2a4a2a;
     border-radius:5px; padding:11px 14px; margin:7px 0;
     transition:border-color 0.2s;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    overflow-x:hidden !important;
+    box-sizing:border-box !important;
 }}
 .sound-card:hover {{ border-color:#4A9A50; }}
 .sound-trigger {{
@@ -329,12 +398,19 @@ div[data-testid="stButton"]>button:hover {{
 .sound-desc {{
     font-size:0.87rem !important; color:#C0D8C0 !important;
     display:block; margin-bottom:4px; line-height:1.6 !important;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    word-break:break-word !important;
 }}
 
 .img-card {{
     background:rgba(8,4,0,0.82); border:1px solid #4a3010;
     border-radius:6px; padding:8px; text-align:center;
     margin-bottom: 8px;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    overflow-x:hidden !important;
+    box-sizing:border-box !important;
 }}
 .img-card-label {{
     font-family:'Cinzel',serif !important; font-size:0.72rem !important;
@@ -349,7 +425,6 @@ div[data-testid="stButton"]>button:hover {{
     text-transform: uppercase;
 }}
 
-/* 音效区域：修复按钮与内容重叠 */
 .sound-player-wrap {{
     margin: 4px 0 6px 0;
     overflow: hidden;
@@ -364,6 +439,9 @@ audio {{
     background:rgba(12,6,1,0.92); border:2px solid #7a4010;
     border-top:3px solid #C8A84B; border-radius:6px;
     padding:30px; text-align:center; margin:14px auto; max-width:600px;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    overflow-x:hidden !important;
 }}
 
 [data-testid="stChatInput"] {{
@@ -393,6 +471,8 @@ audio {{
 }}
 .st-expander [data-testid="stMarkdownContainer"] p {{
     margin: 4px 0 !important; line-height: 1.5 !important;
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
 }}
 hr {{
     border:none !important;
@@ -402,6 +482,14 @@ hr {{
 ::-webkit-scrollbar {{ width:6px; }}
 ::-webkit-scrollbar-track {{ background:rgba(10,5,0,0.3); }}
 ::-webkit-scrollbar-thumb {{ background:#5a3810; border-radius:3px; }}
+
+pre, code {{
+    word-wrap:break-word !important;
+    overflow-wrap:break-word !important;
+    white-space:pre-wrap !important;
+    word-break:break-all !important;
+    max-width:100% !important;
+}}
 
 {_creator_tag_css}
 </style>
@@ -424,71 +512,16 @@ def generate_atlas_xml() -> str:
 '''
 
 
-def _sanitize_for_url(text: str, max_chars: int = 300) -> str:
-    """
-    清理文本用于 URL：
-    移除所有非 ASCII 字符，只保留字母数字空格逗号连字符，按字符数截断。
-    """
-    text = re.sub(r'[^\x00-\x7F]+', ' ', text)
-    text = re.sub(r'[^a-zA-Z0-9\s,\-\.]', ' ', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    if len(text) > max_chars:
-        text = text[:max_chars]
-        last_space = text.rfind(' ')
-        if last_space > max_chars // 2:
-            text = text[:last_space]
-    return text.strip()
-
-
-def _build_image_url(prompt: str, seed: int) -> str:
-    """构建 Pollinations 图片 URL，prompt 已是完整英文 prompt。"""
-    clean = _sanitize_for_url(prompt, max_chars=350)
-    if not clean or len(clean) < 8:
-        clean = (
-            "Don't Starve Together game art style Tim Burton gothic cartoon "
-            "thick black ink outlines hand-drawn dark flower 2D game sprite"
-        )
-    enc = clean.replace(" ", "+").replace(",", "%2C")
-    neg = "realistic+photo+3d+render+anime+bright+colors+text+watermark+blurry"
-    url = (
-        f"https://image.pollinations.ai/prompt/{enc}"
-        f"?width=512&height=512"
-        f"&nologo=true"
-        f"&negative={neg}"
-        f"&model=flux"
-        f"&seed={seed % 99999}"
-    )
-    return url
-
-
-def fetch_image(full_prompt: str) -> dict:
-    """
-    获取图片，自动重试 2 次（换种子）。
-    full_prompt：已包含风格锚定词的完整英文 prompt。
-    """
-    seed = int(datetime.now().timestamp()) % 99999
-    for attempt in range(2):
-        try:
-            url = _build_image_url(full_prompt, seed + attempt * 3333)
-            print(f"[DEBUG] fetch_image attempt={attempt+1} url_len={len(url)}")
-            print(f"[DEBUG] url前120: {url[:120]}...")
-            r = requests.get(url, timeout=90)
-            if r.status_code == 200 and len(r.content) > 1000:
-                return {
-                    "ok":  True,
-                    "b64": base64.b64encode(r.content).decode(),
-                    "url": url,
-                }
-            print(f"[DEBUG] 响应异常: status={r.status_code} size={len(r.content)}")
-        except requests.Timeout:
-            print(f"[DEBUG] 超时 attempt={attempt+1}")
-            if attempt == 1:
-                return {"ok": False, "err": "图片生成超时（>90s），请点击重生成重试"}
-        except Exception as e:
-            print(f"[DEBUG] 异常 attempt={attempt+1}: {e}")
-            if attempt == 1:
-                return {"ok": False, "err": f"生成错误：{str(e)[:60]}"}
-    return {"ok": False, "err": "两次尝试均失败，请点击重生成重试"}
+def _fetch_image_as_bytes(url: str) -> bytes:
+    """下载图片为 bytes，供 st.image() 直接显示"""
+    try:
+        r = requests.get(url, timeout=60)
+        ct = r.headers.get("Content-Type", "").lower()
+        if r.status_code == 200 and "image" in ct and len(r.content) > 500:
+            return r.content
+    except Exception as e:
+        print(f"[DEBUG] _fetch_image_as_bytes failed: {e}")
+    return None
 
 
 def make_zip(mod: dict) -> bytes:
@@ -569,7 +602,6 @@ def _get_prompt_entry_for_idx(idx: int) -> dict:
     all_prompts = visual.get("all_prompts", [])
     if idx < len(all_prompts):
         return all_prompts[idx]
-    # 降级兜底
     base = visual.get("optimized_prompt", (
         "Don't Starve Together game art style, Tim Burton gothic cartoon, "
         "thick black ink outlines, hand-drawn sketch texture, "
@@ -597,7 +629,6 @@ def _get_visual_en_for_idx(idx: int) -> str:
 def synth_audio_html(params: dict, element_id: str) -> str:
     """
     生成 Web Audio API 合成音效的 HTML+JS。
-    修复：统一高度，避免与 Streamlit 按钮重叠。
     """
     if not params:
         return ""
@@ -636,7 +667,6 @@ def synth_audio_html(params: dict, element_id: str) -> str:
         lfo2.start(now); lfo2.stop(now + dur);
         """
 
-    # 注意：height 固定 70px，内容撑开不会和外部元素重叠
     return f"""
 <div style="
     background:rgba(15,30,15,0.70);
@@ -705,7 +735,7 @@ function playSynth_{safe_id}() {{
     const btn = document.getElementById('play_{safe_id}');
     btn.style.background = 'rgba(60,120,60,0.90)';
     btn.style.color = '#aaffaa';
-    btn.textContent = '\u266b 播放中\u2026';
+    btn.textContent = '\\u266b 播放中\\u2026';
     setTimeout(() => {{
         btn.style.background = 'rgba(30,60,30,0.80)';
         btn.style.color = '#88cc88';
@@ -774,7 +804,6 @@ def render_sound_preview(sound: dict):
         cache_key    = f"sfx_{i}"
         color        = faction_colors.get(faction, "#4A9A50")
 
-        # 音效卡片：只显示文字描述，不在 HTML 里放按钮
         st.markdown(f"""
         <div class="sound-card">
           <span class="sound-trigger" style="color:{color};">
@@ -784,12 +813,9 @@ def render_sound_preview(sound: dict):
         </div>
         """, unsafe_allow_html=True)
 
-        # 试听 / 状态区（全部用 Streamlit 原生组件，避免重叠）
         if cache_key in cache:
             entry = cache[cache_key]
             if entry.get("ok") and entry.get("source") == "synth":
-                # 使用 components.v1.html 渲染音效播放器
-                # 高度设为 70px，足够容纳按钮+间距
                 html = synth_audio_html(entry.get("synth_params", {}),
                                         f"sfx{i}")
                 if html:
@@ -815,7 +841,6 @@ def render_sound_preview(sound: dict):
                     st.session_state.sound_audio_cache[cache_key] = result
                 st.rerun()
 
-        # 分隔线
         st.markdown(
             '<hr style="border-top:1px solid rgba(30,60,30,0.4);'
             'margin:6px 0 2px 0;">',
@@ -895,7 +920,7 @@ def render_sound_preview(sound: dict):
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════
-# 🎨 多图预览组件
+# 🎨 多图预览组件（修复版：用 b64 bytes 显示图片）
 # ══════════════════════════════════════════════════════════════
 
 def _render_image_limit_notice(num_images: int):
@@ -913,8 +938,40 @@ def _render_image_limit_notice(num_images: int):
     """, unsafe_allow_html=True)
 
 
+def _display_image_safe(img_data: dict) -> bool:
+    """
+    安全显示图片：优先用 b64 bytes，其次尝试下载 URL 为 bytes，
+    最后才直接传 URL（可能失败）。
+    返回：是否成功显示。
+    """
+    # 方案1：用 b64 解码为 bytes
+    if img_data.get("b64"):
+        try:
+            img_bytes = base64.b64decode(img_data["b64"])
+            if len(img_bytes) > 500:
+                st.image(img_bytes, use_container_width=True)
+                return True
+        except Exception as e:
+            print(f"[DEBUG] b64 decode failed: {e}")
+
+    # 方案2：下载 URL 为 bytes
+    if img_data.get("url"):
+        img_bytes = _fetch_image_as_bytes(img_data["url"])
+        if img_bytes:
+            st.image(img_bytes, use_container_width=True)
+            return True
+        # 方案3：直接传 URL（可能在某些 Streamlit 环境下失败）
+        try:
+            st.image(img_data["url"], use_container_width=True)
+            return True
+        except Exception as e:
+            print(f"[DEBUG] st.image(url) failed: {e}")
+
+    return False
+
+
 def render_image_gallery(visual: dict, spec: dict):
-    """渲染多图预览区"""
+    """渲染多图预览区（修复版）"""
     images  = st.session_state.preview_images
     n       = len(images)
     obj     = spec.get("main_object", {})
@@ -934,7 +991,6 @@ def render_image_gallery(visual: dict, spec: dict):
 
     _render_image_limit_notice(n)
 
-    # 每行最多 2 列
     cols_per_row = min(n, 2)
     rows = [images[i:i + cols_per_row]
             for i in range(0, n, cols_per_row)]
@@ -948,33 +1004,25 @@ def render_image_gallery(visual: dict, spec: dict):
             visual_en  = img_data.get("visual_en", "")
 
             with col:
-                # 图标徽章
                 if is_icon:
                     st.markdown(
                         '<span class="img-icon-badge">&#9733; MOD ICON</span>',
                         unsafe_allow_html=True)
 
-                # 图片容器
                 st.markdown('<div class="img-card">', unsafe_allow_html=True)
 
-                if img_data.get("url"):
-                    st.image(img_data["url"], use_container_width=True)
-                    st.markdown(
-                        f'<span class="img-card-label">#{global_idx+1} {label}</span>',
-                        unsafe_allow_html=True)
-                else:
+                # ========== 核心修复：安全显示图片 ==========
+                displayed = _display_image_safe(img_data)
+                if not displayed:
                     err_msg = img_data.get("err", "生成失败，请重试")
-                    st.markdown(
-                        f'<p style="color:#6a3820;text-align:center;'
-                        f'font-style:italic;padding:20px 4px;font-size:0.8rem;">'
-                        f'#{global_idx+1} {label}<br>'
-                        f'<span style="font-size:0.70rem;color:#4a2818;">'
-                        f'{err_msg}</span></p>',
-                        unsafe_allow_html=True)
+                    st.error(f"#{global_idx+1} {label}: {err_msg}")
+                # ============================================
 
+                st.markdown(
+                    f'<span class="img-card-label">#{global_idx+1} {label}</span>',
+                    unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
-                # visual_en 调试标签（图片卡外，避免影响卡片布局）
                 if visual_en:
                     st.markdown(
                         f'<div class="visual-debug">{visual_en}</div>',
@@ -995,13 +1043,14 @@ def render_image_gallery(visual: dict, spec: dict):
                                 "visual_en": _get_visual_en_for_idx(global_idx),
                                 "err":       "",
                             }
+                            st.success(f"#{global_idx+1} 重新生成成功！")
                         else:
                             st.session_state.preview_images[global_idx]["err"] = (
                                 new_img["err"])
-                            st.warning(f"生成失败：{new_img['err']}")
+                            st.error(f"生成失败：{new_img['err']}")
                     st.rerun()
 
-    # ── Prompt 详情（折叠，修复乱码：不用 emoji 做标题）─
+    # ── Prompt 详情折叠区 ───────────────────────────────
     all_prompts = visual.get("all_prompts", [])
     if all_prompts:
         with st.expander("查看绘图 Prompt（调试用）", expanded=False):
@@ -1033,12 +1082,14 @@ def render_image_gallery(visual: dict, spec: dict):
                 visual_en = entry.get("visual_en", "")
                 img = fetch_image(full_p)
                 new_images.append({
-                    "url":       img["url"] if img["ok"] else None,
-                    "b64":       img["b64"] if img["ok"] else None,
+                    "url":       img.get("url"),
+                    "b64":       img.get("b64"),
                     "label":     lbl,
                     "visual_en": visual_en,
                     "err":       img.get("err", "") if not img["ok"] else "",
                 })
+                if not img["ok"]:
+                    st.error(f"#{idx+1}「{lbl}」: {img.get('err','')}")
             st.session_state.preview_images = new_images
         failed = [i + 1 for i, im in enumerate(new_images) if not im.get("url")]
         if failed:
@@ -1048,7 +1099,7 @@ def render_image_gallery(visual: dict, spec: dict):
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════
-# 🎨 预览页
+# 🎨 预览页（修复版：生成按钮显示错误信息）
 # ══════════════════════════════════════════════════════════════
 
 def render_preview_stage():
@@ -1223,20 +1274,25 @@ def render_preview_stage():
                             f"✦ 生成第 {idx+1}/{num} 张「{lbl}」……"):
                         img = fetch_image(full_p)
                         new_images.append({
-                            "url":       img["url"] if img["ok"] else None,
-                            "b64":       img["b64"] if img["ok"] else None,
+                            "url":       img.get("url"),
+                            "b64":       img.get("b64"),
                             "label":     lbl,
                             "visual_en": visual_en,
                             "err":       img.get("err","") if not img["ok"] else "",
                         })
                         if not img["ok"]:
                             failed_list.append(idx + 1)
+                            st.error(
+                                f"第 {idx+1} 张「{lbl}」生成失败: "
+                                f"{img.get('err','')}")
                     prog.progress((idx + 1) / num)
                 st.session_state.preview_images = new_images
                 if failed_list:
                     st.warning(
                         f"第 {failed_list} 张生成失败，"
-                        f"可在预览区点击重生成单独重试")
+                        f"可在预览区点击「重生成」单独重试")
+                else:
+                    st.success(f"✦ 全部 {num} 张图腾已召唤成功！")
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1527,7 +1583,8 @@ def render_done_stage():
 def show_producer_message():
     st.markdown("""
     <div style="font-family:'IM Fell English SC',serif;font-size:1rem;
-                line-height:2;color:#D4BC88;text-align:justify;">
+                line-height:2;color:#D4BC88;text-align:justify;
+                word-wrap:break-word;overflow-wrap:break-word;">
       <p style="margin-bottom:18px;">
         这个 <strong>MOD 生成器</strong>诞生于对《饥荒联机版》的热爱，
         以及对<strong>创造自由</strong>的向往。
@@ -1742,9 +1799,18 @@ with st.sidebar:
                     thumb_cols = st.columns(min(len(all_imgs), 3))
                     for tc, img_url in zip(thumb_cols, all_imgs[:3]):
                         with tc:
-                            st.image(img_url, use_container_width=True)
+                            # 侧边栏缩略图也用 bytes 下载避免失败
+                            thumb_bytes = _fetch_image_as_bytes(img_url)
+                            if thumb_bytes:
+                                st.image(thumb_bytes, use_container_width=True)
+                            else:
+                                st.image(img_url, width=110)
                 elif mod.get("image_url"):
-                    st.image(mod["image_url"], width=110)
+                    thumb_bytes = _fetch_image_as_bytes(mod["image_url"])
+                    if thumb_bytes:
+                        st.image(thumb_bytes, width=110)
+                    else:
+                        st.image(mod["image_url"], width=110)
 
                 img_count = len(all_imgs)
                 if img_count > 0:
