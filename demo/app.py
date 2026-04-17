@@ -10,6 +10,7 @@ from datetime import datetime
 # ══════════════════════════════════════════════════════════════
 # ⚠️ LLM 导入
 # ══════════════════════════════════════════════════════════════
+
 try:
     from qwen_client import (
         explore_with_llm,
@@ -19,11 +20,13 @@ try:
         optimize_visual_prompt,
         generate_sound_prompts,
         generate_sound_effect,
+        fetch_image,          # ← 加上这行
         DST_NEGATIVE,
     )
 except ImportError as e:
     st.error(f"❌ 永恒大陆加载失败：{e}")
     st.stop()
+    
 
 # ══════════════════════════════════════════════════════════════
 # 🔧 Session State
