@@ -65,6 +65,7 @@ DST_KNOWLEDGE_BASE = """
 # 🎨 饥荒风格图片 Prompt 常量
 # ══════════════════════════════════════════════════════════════
 
+# 风格锚定词（固定，始终注入，PRD 3.6要求）
 DST_STYLE_ANCHOR = (
     "Don't Starve Together game art style, Tim Burton inspired gothic cartoon, "
     "thick black ink outlines, hand-drawn sketch texture, "
@@ -72,6 +73,7 @@ DST_STYLE_ANCHOR = (
     "dark whimsical, 2D game asset sprite"
 )
 
+# 固定负面提示词（短而精）
 DST_NEGATIVE = (
     "realistic photo, 3d render, anime, bright colors, "
     "text, watermark, blurry, modern, gradient"
@@ -384,6 +386,7 @@ def _safe_parse_json(text: str):
             return json.loads(match.group())
     except json.JSONDecodeError:
         pass
+    # 尝试解析数组
     try:
         match = re.search(r'\[[\s\S]*\]', text)
         if match:
@@ -435,8 +438,11 @@ def _sanitize_english_only(text: str) -> str:
     移除所有非ASCII字符（中文、日文等），只保留纯英文。
     用于图片 prompt 的最终清理。
     """
+    # 移除所有非ASCII字符
     text = re.sub(r'[^\x00-\x7F]+', ' ', text)
+    # 只保留字母、数字、空格、常用标点
     text = re.sub(r'[^a-zA-Z0-9\s,\-\.]', ' ', text)
+    # 压缩空白
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
@@ -447,17 +453,6 @@ def _truncate_to_words(text: str, max_words: int) -> str:
     if len(words) <= max_words:
         return text
     return ' '.join(words[:max_words])
-
-
-def _truncate_to_chars(text: str, max_chars: int) -> str:
-    """按字符数截断文本，在词边界断开"""
-    if len(text) <= max_chars:
-        return text
-    truncated = text[:max_chars]
-    last_space = truncated.rfind(' ')
-    if last_space > max_chars // 2:
-        truncated = truncated[:last_space]
-    return truncated.strip()
 
 # ══════════════════════════════════════════════════════════════
 # 🗣️ 对话引导
@@ -555,7 +550,10 @@ def summarize_design(messages: list) -> dict:
         if result:
             if "sub_objects" not in result:
                 result["sub_objects"] = []
+            # 校验并修复 sound_triggers
             result = _validate_and_fix_sound_triggers(result)
+            # 注意：不在这里生成 image_prompts，
+            # 交给 optimize_visual_prompt 专门处理
             return result
         return _fallback_design_summary(messages)
     except Exception as e:
@@ -615,6 +613,7 @@ def _extract_visual_descriptions(spec: dict) -> list:
     第一步：调用 LLM 从设计规格中提取每个对象的纯英文视觉描述。
     返回：[{"label": "中文名", "visual_en": "纯英文外观描述"}, ...]
     """
+    # 构建对象列表
     all_objects = []
     main = spec.get("main_object", {})
     if main:
@@ -633,6 +632,7 @@ def _extract_visual_descriptions(spec: dict) -> list:
     if not all_objects:
         return []
 
+    # 构建请求内容
     obj_list = "\n".join(
         f"{i+1}. {obj['name_cn']}（{obj['name_en']}）：{obj['appearance']}"
         for i, obj in enumerate(all_objects)
@@ -654,20 +654,24 @@ def _extract_visual_descriptions(spec: dict) -> list:
         result = _safe_parse_json(raw)
 
         if isinstance(result, list) and len(result) > 0:
+            # 验证并清理每条描述
             validated = []
             for i, item in enumerate(result):
                 if i >= len(all_objects):
                     break
                 label    = item.get("label", all_objects[i]["name_cn"])
                 visual   = item.get("visual_en", "")
+                # 强制清理：确保纯英文
                 visual   = _sanitize_english_only(visual)
                 visual   = _truncate_to_words(visual, 15)
                 if not visual or len(visual) < 5:
+                    # 兜底：用 name_en 构造
                     name = all_objects[i]["name_en"].replace("_", " ")
                     visual = _make_fallback_visual_en(
                         all_objects[i]["name_cn"], name)
                 validated.append({"label": label, "visual_en": visual})
 
+            # 如果数量不够，补充兜底
             for i in range(len(validated), len(all_objects)):
                 obj  = all_objects[i]
                 name = obj["name_en"].replace("_", " ")
@@ -680,6 +684,7 @@ def _extract_visual_descriptions(spec: dict) -> list:
     except Exception as e:
         print(f"[WARN] _extract_visual_descriptions: {e}")
 
+    # 完全兜底
     return [
         {
             "label":     obj["name_cn"],
@@ -691,9 +696,13 @@ def _extract_visual_descriptions(spec: dict) -> list:
 
 
 def _make_fallback_visual_en(name_cn: str, name_en: str) -> str:
-    """根据对象名称生成兜底英文视觉描述"""
+    """
+    根据对象名称生成兜底英文视觉描述。
+    通过关键词匹配中文名，生成有意义的英文描述。
+    """
     name_lower = name_cn.lower() + name_en.lower()
 
+    # 花朵类关键词匹配
     if any(w in name_cn for w in ["玫瑰", "rose"]):
         if any(w in name_cn for w in ["暗影", "黑", "紫", "shadow"]):
             return "dark purple rose black veins wilted glowing edges"
@@ -718,6 +727,7 @@ def _make_fallback_visual_en(name_cn: str, name_en: str) -> str:
         return "dark chrysanthemum layered petals wilted gothic"
 
     elif any(w in name_cn for w in ["花", "flower", "bloom"]):
+        # 通用花朵
         if any(w in name_cn for w in ["暗影", "影", "黑", "dark", "shadow"]):
             return "dark withered flower black petals glowing veins"
         elif any(w in name_cn for w in ["月", "白", "亮", "lunar"]):
@@ -729,6 +739,7 @@ def _make_fallback_visual_en(name_cn: str, name_en: str) -> str:
         return "wilted dark flower twisted stem gothic petals"
 
     else:
+        # 非花朵类
         name_clean = _sanitize_english_only(name_en)[:20]
         return f"dark gothic {name_clean} item twisted shadowy"
 
@@ -737,28 +748,23 @@ def _build_full_prompt(visual_en: str) -> str:
     """
     将对象视觉描述与风格锚定词合并，构建完整绘图 prompt。
     格式：[风格锚定词], [对象描述]
-    确保总词数不超过60词，总字符数不超过350。
+    确保总词数不超过60词。
     """
+    # 清理视觉描述
     clean_visual = _sanitize_english_only(visual_en)
     clean_visual = _truncate_to_words(clean_visual, 15)
 
+    # 拼接完整 prompt
     full = f"{DST_STYLE_ANCHOR}, {clean_visual}"
 
-    # 按字符数截断，URL 安全
-    if len(full) > 350:
+    # 总长度检查（按字符，URL友好）
+    if len(full) > 400:
+        # 截短风格锚定词版本
         short_anchor = (
             "Don't Starve Together art style, Tim Burton gothic cartoon, "
             "thick black ink outlines, hand-drawn, muted tones, 2D game sprite"
         )
         full = f"{short_anchor}, {clean_visual}"
-
-    # 再检查，用通用短锚定词
-    if len(full) > 350:
-        minimal_anchor = (
-            "Don't Starve Together style, Tim Burton gothic, "
-            "black ink outlines, hand-drawn, 2D game sprite"
-        )
-        full = f"{minimal_anchor}, {clean_visual}"
 
     return full
 
@@ -783,6 +789,7 @@ def optimize_visual_prompt(design_spec: dict) -> dict:
     """
     print("[DEBUG] optimize_visual_prompt: 开始提取视觉描述...")
 
+    # 第一步：提取每个对象的视觉描述
     visual_items = _extract_visual_descriptions(design_spec)
 
     print(f"[DEBUG] 提取到 {len(visual_items)} 个对象的视觉描述：")
@@ -790,6 +797,7 @@ def optimize_visual_prompt(design_spec: dict) -> dict:
         print(f"  #{i+1} [{v['label']}]: {v['visual_en']}")
 
     if not visual_items:
+        # 终极兜底
         obj  = design_spec.get("main_object", {})
         name = obj.get("name_cn", "神秘物品")
         visual_items = [{
@@ -797,13 +805,14 @@ def optimize_visual_prompt(design_spec: dict) -> dict:
             "visual_en": "dark mysterious flower wilted gothic petals",
         }]
 
+    # 第二步：构建完整 prompt
     all_prompts = []
     for item in visual_items:
         full_prompt = _build_full_prompt(item["visual_en"])
         all_prompts.append({
             "label":     item["label"],
             "prompt":    full_prompt,
-            "visual_en": item["visual_en"],
+            "visual_en": item["visual_en"],  # 保存视觉描述部分（调试用）
         })
         print(f"  ✓ [{item['label']}] prompt长度={len(full_prompt)}字符")
         print(f"    视觉描述: {item['visual_en']}")
@@ -1008,99 +1017,6 @@ def design_with_llm(design_summary: str,
     except Exception as e:
         print(f"[ERROR] design_with_llm: {e}")
         return _create_fallback_mod(design_summary)
-
-# ══════════════════════════════════════════════════════════════
-# 🖼️ 图片获取（修复版）
-# ══════════════════════════════════════════════════════════════
-
-def _sanitize_for_url(text: str, max_chars: int = 300) -> str:
-    """
-    清理文本用于 URL：
-    移除所有非 ASCII 字符，只保留字母数字空格逗号连字符，按字符数截断。
-    """
-    text = re.sub(r'[^\x00-\x7F]+', ' ', text)
-    text = re.sub(r'[^a-zA-Z0-9\s,\-\.]', ' ', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    if len(text) > max_chars:
-        text = text[:max_chars]
-        last_space = text.rfind(' ')
-        if last_space > max_chars // 2:
-            text = text[:last_space]
-    return text.strip()
-
-
-def _build_image_url(prompt: str, seed: int) -> str:
-    """构建 Pollinations 图片 URL，prompt 已是完整英文 prompt。"""
-    clean = _sanitize_for_url(prompt, max_chars=350)
-    if not clean or len(clean) < 8:
-        clean = (
-            "Don't Starve Together game art style Tim Burton gothic cartoon "
-            "thick black ink outlines hand-drawn dark flower 2D game sprite"
-        )
-    enc = clean.replace(" ", "+").replace(",", "%2C")
-    neg = "realistic+photo+3d+render+anime+bright+colors+text+watermark+blurry"
-    url = (
-        f"https://image.pollinations.ai/prompt/{enc}"
-        f"?width=512&height=512"
-        f"&nologo=true"
-        f"&negative={neg}"
-        f"&model=flux"
-        f"&seed={seed % 99999}"
-    )
-    return url
-
-
-def fetch_image(full_prompt: str) -> dict:
-    """
-    获取图片，自动重试（换种子+换模型）。
-    full_prompt：已包含风格锚定词的完整英文 prompt。
-    """
-    seed = int(datetime.now().timestamp()) % 99999
-
-    for attempt in range(3):
-        try:
-            url = _build_image_url(full_prompt, seed + attempt * 3333)
-            print(f"[DEBUG] fetch_image attempt={attempt+1} url_len={len(url)}")
-            print(f"[DEBUG] url前120: {url[:120]}...")
-
-            r = requests.get(url, timeout=90)
-
-            # 检查 Content-Type，排除错误 HTML 页面
-            ct = r.headers.get("Content-Type", "").lower()
-            if r.status_code == 200 and "image" in ct and len(r.content) > 1000:
-                print(f"[DEBUG] OK: {len(r.content)} bytes, type={ct}")
-                return {
-                    "ok":  True,
-                    "b64": base64.b64encode(r.content).decode(),
-                    "url": url,
-                }
-
-            print(f"[DEBUG] 失败: status={r.status_code} "
-                  f"ct={ct} size={len(r.content)}")
-            if len(r.content) < 500:
-                print(f"[DEBUG] body: {r.text[:200]}")
-
-            # 第3次尝试去掉 model=flux，用默认模型兜底
-            if attempt == 2:
-                fallback_url = re.sub(r'&model=flux', '', url)
-                print(f"[DEBUG] fallback: removed model=flux")
-                r2 = requests.get(fallback_url, timeout=90)
-                ct2 = r2.headers.get("Content-Type", "").lower()
-                if r2.status_code == 200 and "image" in ct2 and len(r2.content) > 1000:
-                    print(f"[DEBUG] fallback OK: {len(r2.content)} bytes")
-                    return {
-                        "ok":  True,
-                        "b64": base64.b64encode(r2.content).decode(),
-                        "url": fallback_url,
-                    }
-
-        except requests.Timeout:
-            print(f"[DEBUG] 超时 attempt={attempt+1}")
-        except Exception as e:
-            print(f"[DEBUG] 异常 attempt={attempt+1}: {e}")
-
-    return {"ok": False, "err": "图片生成失败（多次尝试均失败），请稍后重试"}
-
 
 # ══════════════════════════════════════════════════════════════
 # 🔧 Fallback 函数
